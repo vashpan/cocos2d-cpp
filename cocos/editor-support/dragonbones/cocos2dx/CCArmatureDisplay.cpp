@@ -1,5 +1,4 @@
 #include "CCArmatureDisplay.h"
-#include "editor-support/creator/CCCameraNode.h"
 
 DRAGONBONES_NAMESPACE_BEGIN
 
@@ -134,15 +133,9 @@ bool DBCCSprite::_checkVisibility(const cocos2d::Mat4& transform, const cocos2d:
 {
     auto director = cocos2d::Director::getInstance();
     
-    creator::CameraNode* camera = creator::CameraNode::getInstance();
     cocos2d::Rect visibleRect;
-    if (!camera || camera->visitingIndex <= 0) {
-        visibleRect.origin = director->getVisibleOrigin();
-        visibleRect.size = director->getVisibleSize();
-    }
-    else {
-        visibleRect = camera->getVisibleRect();
-    }
+    visibleRect.origin = director->getVisibleOrigin();
+    visibleRect.size = director->getVisibleSize();
 
     // transform center point to screen space
     float hSizeX = size.width / 2;

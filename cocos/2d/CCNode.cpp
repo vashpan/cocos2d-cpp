@@ -43,8 +43,6 @@ THE SOFTWARE.
 #include "renderer/CCGLProgramState.h"
 #include "math/TransformUtils.h"
 
-#include "editor-support/creator/CCCameraNode.h"
-
 
 #if CC_NODE_RENDER_SUBPIXEL
 #define RENDER_IN_SUBPIXEL
@@ -1240,19 +1238,6 @@ void Node::visit(Renderer* renderer, const Mat4 &parentTransform, uint32_t paren
     // but it is deprecated and your code should not rely on it
     _director->pushMatrix(MATRIX_STACK_TYPE::MATRIX_STACK_MODELVIEW);
     _director->loadMatrix(MATRIX_STACK_TYPE::MATRIX_STACK_MODELVIEW, _modelViewTransform);
-
-    auto camera = creator::CameraNode::getInstance();
-    if (camera) {
-        if (camera->visitingIndex <= 0) {
-            if (camera->containsNode(this)) {
-                camera->visitingIndex ++;
-            }
-        }
-        else {
-            camera->visitingIndex ++;
-        }
-        
-    }
     
     if(!_children.empty())
     {
@@ -1278,10 +1263,6 @@ void Node::visit(Renderer* renderer, const Mat4 &parentTransform, uint32_t paren
     else
     {
         this->draw(renderer, _modelViewTransform, flags);
-    }
-    
-    if (camera && camera->visitingIndex > 0) {
-        camera->visitingIndex --;
     }
 
     _director->popMatrix(MATRIX_STACK_TYPE::MATRIX_STACK_MODELVIEW);

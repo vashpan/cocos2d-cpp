@@ -41,8 +41,6 @@
 #include "base/CCEventType.h"
 #include "2d/CCScene.h"
 
-#include "editor-support/creator/CCCameraNode.h"
-
 NS_CC_BEGIN
 
 // helper
@@ -781,16 +779,9 @@ void Renderer::flushTriangles()
 // helpers
 bool Renderer::checkVisibility(const Mat4& transform, const Size& size)
 {
-    creator::CameraNode* camera = creator::CameraNode::getInstance();
-    
     Rect visibleRect;
-    if (!camera || camera->visitingIndex <= 0) {
-        visibleRect.origin = Director::getInstance()->getVisibleOrigin();
-        visibleRect.size = Director::getInstance()->getVisibleSize();
-    }
-    else {
-        visibleRect = camera->getVisibleRect();
-    }
+    visibleRect.origin = Director::getInstance()->getVisibleOrigin();
+    visibleRect.size = Director::getInstance()->getVisibleSize();
     
     Rect rect(0,0, size.width, size.height);
     rect = RectApplyTransform(rect, transform);
