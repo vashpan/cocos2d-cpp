@@ -22,75 +22,87 @@
 
 // Deprecated functions
 
-var cc = cc || {};
+// var cc = cc || {};
 
-(function() {
-    ccui.Text.prototype.setText = function(text){
-        this.setString(text || "");
-    };
+// (function() {
+//     var logW = function(oldName, newName) {
+//         cc.log("\n********** \n"+oldName +" was deprecated, please use "+ newName +" instead.\n**********");
+//     };
 
-    ccui.Text.prototype.getStringValue = function(){
-        return this.getString();
-    };
+//     ccui.Text.prototype.setText = function(text) {
+//         logW("ccui.Text.setText", "ccui.Text.setString");
+//         this.setString(text);
+//     };
 
-    ccui.TextField.prototype.setText = function(text){
-        this.setString(text || "");
-    };
+//     ccui.Text.prototype.getStringValue = function() {
+//         logW("ccui.Text.getStringValue", "ccui.Text.getString");
+//         return this.getString();
+//     };
 
-    ccui.TextField.prototype.getStringValue = function(){
-        return this.getString();
-    };
+//     ccui.ListView.prototype.requestRefreshView = function() {
+//         logW("ccui.ListView.requestRefreshView", "ccui.ListView.forceDoLayout");
+//     	this.forceDoLayout();
+//     };
 
-    ccui.ListView.prototype.requestRefreshView = function() {
-    	this.forceDoLayout();
-    };
+//     ccui.ListView.prototype.refreshView = function() {
+//         logW("ccui.ListView.refreshView", "ccui.ListView.forceDoLayout");
+//     	this.forceDoLayout();
+//     };
 
-    ccui.ListView.prototype.refreshView = function() {
-    	this.forceDoLayout();
-    };
+//     ccui.PageView.prototype.addWidgetToPage = function(widget, pageIdx, forceCreate) {
+//         logW("ccui.PageView.addWidgetToPage", "ccui.PageView.insertPage");
+//         this.insertPage(widget, pageIdx);
+//     };
 
-    ccui.PageView.prototype.addWidgetToPage = function(widget, pageIdx, forceCreate) {
-        this.insertPage(widget, pageIdx);
-    };
+//     ccui.PageView.prototype.getCurPageIndex = function() {
+//         logW("ccui.PageView.getCurPageIndex", "ccui.PageView.getCurrentPageIndex");
+//         return this.getCurrentPageIndex();
+//     };
 
-    ccui.PageView.prototype.getCurPageIndex = function() {
-        return this.getCurrentPageIndex();
-    };
+//     ccui.PageView.prototype.addWidgetToPage = function(widget, pageIndx) {
+//         logW("ccui.PageView.addWidgetToPage", "ccui.PageView.insertPage");
+//         return this.insertPage(widget, pageIndx);
+//     };
 
-    ccui.PageView.prototype.setCurPageIndex = function(index) {
-        this.setCurrentPageIndex(index);
-    };
+//     ccui.PageView.prototype.setCurPageIndex = function(index) {
+//         logW("ccui.PageView.setCurPageIndex", "ccui.PageView.setCurrentPageIndex");
+//         return this.setCurrentPageIndex(index);
+//     };
 
-    ccui.PageView.prototype.getPages = function() {
-        return this.getItems();
-    };
+//     ccui.PageView.prototype.getPages = function() {
+//         logW("ccui.PageView.getPages", "ccui.PageView.getItems");
+//         return this.getItems();
+//     };
 
-    ccui.PageView.prototype.getPage = function(index) {
-        return this.getItem(index);
-    };
+//     ccui.PageView.prototype.getPage = function(index) {
+//         logW("ccui.PageView.getPage", "ccui.PageView.getItem");
+//         return this.getItem(index);
+//     };
 
-    ccui.PageView.prototype.setCustomScrollThreshold = function(threshold) {
-        
-    };
+//     ccui.PageView.prototype.setCustomScrollThreshold = function() {
+//         cc.log("Since v3.9, this method has no effect.");
+//     };
 
-    ccui.PageView.prototype.getCustomScrollThreshold = function() {
-        return 0;
-    };
+//     ccui.PageView.prototype.getCustomScrollThreshold = function() {
+//         cc.log("Since v3.9, this method has no effect.");
+//     };
 
-    ccui.PageView.prototype.setUsingCustomScrollThreshold = function(threshold) {
-        
-    };
+//     ccui.PageView.prototype.setUsingCustomScrollThreshold = function() {
+//         cc.log("Since v3.9, this method has no effect.");
+//     };
 
-    ccui.PageView.prototype.isUsingCustomScrollThreshold = function() {
-        return false;
-    };
+//     ccui.PageView.prototype.isUsingCustomScrollThreshold = function() {
+//         cc.log("Since v3.9, this method has no effect.");
+//     };
 
-    ccui.CheckBox.prototype.setSelectedState = function(selected) {
-        this.setSelected(selected);
-    };
+//     ccui.ListView.prototype.requestRefreshView = function() {
+//         logW("ccui.ListView.requestRefreshView", "ccui.ListView.forceDoLayout");
+//         this.forceDoLayout();
+//     };
 
-    ccui.CheckBox.prototype.getSelectedState = function() {
-        return this.isSelected();
-    }
+//     ccui.ListView.prototype.refreshView = function() {
+//         logW("ccui.ListView.refreshView", "ccui.ListView.forceDoLayout");
+//         this.forceDoLayout();
+//     };
 
-})();
+// })();

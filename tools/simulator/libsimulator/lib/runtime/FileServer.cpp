@@ -34,7 +34,9 @@ THE SOFTWARE.
 #include <sys/stat.h>
 #endif
 
-USING_NS_CC;
+#if CC_TARGET_PLATFORM == CC_PLATFORM_ANDROID
+#define bzero(a, b) memset(a, 0, b);
+#endif
 
 //1M size
 #define MAXPROTOLENGTH 1048576
@@ -62,7 +64,8 @@ void FileServer::readResFileFinfo()
     FILE * pFile = fopen (filecfg.c_str() , "r");
     if(pFile)
     {
-        rapidjson::FileStream inputStream(pFile);
+        char readBuffer[65536];
+        rapidjson::FileReadStream inputStream(pFile, readBuffer, sizeof(readBuffer));
         _filecfgjson.ParseStream<0>(inputStream);
         fclose(pFile);
     }
@@ -71,7 +74,7 @@ void FileServer::readResFileFinfo()
     }
     
     //save file info to disk every five second
-    Director::getInstance()->getScheduler()->schedule([&](float){
+    cocos2d::Director::getInstance()->getScheduler()->schedule([&](float){
         rapidjson::StringBuffer buffer;
         rapidjson::Writer< rapidjson::StringBuffer > writer(buffer);
         _filecfgjson.Accept(writer);
@@ -254,7 +257,7 @@ _responseEndThread(false)
     _isUsingWritePath = true;
 #endif
     
-    _writePath = FileUtils::getInstance()->getWritablePath();
+    _writePath = cocos2d::FileUtils::getInstance()->getWritablePath();
     
 #if (CC_TARGET_PLATFORM == CC_PLATFORM_MAC)
 #include "Widget_mac.h"

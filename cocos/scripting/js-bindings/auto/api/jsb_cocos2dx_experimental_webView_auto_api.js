@@ -9,6 +9,26 @@ var ccui = ccui || {};
 ccui.WebView = {
 
 /**
+ * @method setOnShouldStartLoading
+ * @param {function} arg0
+ */
+setOnShouldStartLoading : function (
+func 
+)
+{
+},
+
+/**
+ * @method setOnDidFailLoading
+ * @param {function} arg0
+ */
+setOnDidFailLoading : function (
+func 
+)
+{
+},
+
+/**
  * @method canGoBack
  * @return {bool}
  */
@@ -87,11 +107,31 @@ str
 },
 
 /**
+ * @method setBounces
+ * @param {bool} arg0
+ */
+setBounces : function (
+bool 
+)
+{
+},
+
+/**
  * @method evaluateJS
  * @param {String} arg0
  */
 evaluateJS : function (
 str 
+)
+{
+},
+
+/**
+ * @method setOnJSCallback
+ * @param {function} arg0
+ */
+setOnJSCallback : function (
+func 
 )
 {
 },
@@ -143,11 +183,37 @@ reload : function (
 },
 
 /**
+ * @method loadData
+ * @param {cc.Data} arg0
+ * @param {String} arg1
+ * @param {String} arg2
+ * @param {String} arg3
+ */
+loadData : function (
+data, 
+str, 
+str, 
+str 
+)
+{
+},
+
+/**
  * @method setJavascriptInterfaceScheme
  * @param {String} arg0
  */
 setJavascriptInterfaceScheme : function (
 str 
+)
+{
+},
+
+/**
+ * @method setOnDidFinishLoading
+ * @param {function} arg0
+ */
+setOnDidFinishLoading : function (
+func 
 )
 {
 },

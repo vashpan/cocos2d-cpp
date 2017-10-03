@@ -375,6 +375,19 @@ public:
 
     /// @} End of Sprite properties getter/setters
 
+    /**
+     * returns a reference of the polygon information associated with this sprite
+     *
+     * @return a reference of PolygonInfo
+     */
+    const PolygonInfo& getPolygonInfo() const;
+
+    /**
+     * set the sprite to use this new PolygonInfo
+     *
+     * @param PolygonInfo the polygon information object
+     */
+    void setPolygonInfo(const PolygonInfo& info);
     //
     // Overrides
     //
@@ -426,12 +439,17 @@ public:
     virtual void setScale(float scale) override;
     virtual void setPositionZ(float positionZ) override;
     virtual void setAnchorPoint(const Vec2& anchor) override;
-    virtual void ignoreAnchorPointForPosition(bool value) override;
+    
+    virtual void setIgnoreAnchorPointForPosition(bool value) override;
+    
     virtual void setVisible(bool bVisible) override;
     virtual void draw(Renderer *renderer, const Mat4 &transform, uint32_t flags) override;
     virtual void setOpacityModifyRGB(bool modify) override;
     virtual bool isOpacityModifyRGB() const override;
     /// @}
+
+    int getResourceType() const { return _fileType; }
+    const std::string& getResourceName() const { return _fileName; }
 
 CC_CONSTRUCTOR_ACCESS:
     /**
@@ -535,28 +553,16 @@ CC_CONSTRUCTOR_ACCESS:
      * @lua     init
      */
     virtual bool initWithFile(const std::string& filename, const Rect& rect);
-
-    /**
-     * returns a copy of the polygon information associated with this sprite
-     * because this is a copy process it is slower than getting the reference, so use wisely
-     *
-     * @return a copy of PolygonInfo
-     */
-    PolygonInfo& getPolygonInfo() { return _polyInfo; }
-
-    /**
-     * set the sprite to use this new PolygonInfo
-     *
-     * @param PolygonInfo the polygon information object
-     */
-    void setPolygonInfo(const PolygonInfo& info);
+    
 protected:
 
     void updateColor() override;
-    virtual void setTextureCoords(Rect rect);
+    virtual void setTextureCoords(const Rect& rect);
     virtual void updateBlendFunc();
     virtual void setReorderChildDirtyRecursively();
     virtual void setDirtyRecursively(bool value);
+
+    std::string _fileName;
 
     //
     // Data used when the sprite is rendered using a SpriteSheet
@@ -568,6 +574,7 @@ protected:
     bool                _dirty;             /// Whether the sprite needs to be updated
     bool                _recursiveDirty;    /// Whether all of the sprite's children needs to be updated
     bool                _shouldBeHidden;    /// should not be drawn because one of the ancestors is not visible
+    bool   _rectRotated;                    /// Whether the texture is rotated
     Mat4              _transformToBatch;
 
     //
@@ -586,7 +593,7 @@ protected:
 
     // texture
     Rect _rect;                             /// Rectangle of Texture2D
-    bool   _rectRotated;                    /// Whether the texture is rotated
+
 
     // Offset Position (used by Zwoptex)
     Vec2 _offsetPosition;
@@ -604,6 +611,9 @@ protected:
     bool _flippedY;                         /// Whether the sprite is flipped vertically or not
 
     bool _insideBounds;                     /// whether or not the sprite was inside bounds the previous frame
+
+    int _fileType;
+
 private:
     CC_DISALLOW_COPY_AND_ASSIGN(Sprite);
 };

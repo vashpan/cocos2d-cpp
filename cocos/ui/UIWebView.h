@@ -27,7 +27,8 @@
 
 #include "platform/CCPlatformConfig.h"
 
-#if (CC_TARGET_PLATFORM == CC_PLATFORM_ANDROID || CC_TARGET_PLATFORM == CC_PLATFORM_IOS )
+#if (CC_TARGET_PLATFORM == CC_PLATFORM_ANDROID || CC_TARGET_PLATFORM == CC_PLATFORM_IOS || CC_TARGET_PLATFORM == CC_PLATFORM_TIZEN) && !defined(CC_PLATFORM_OS_TVOS)
+
 
 
 #include "ui/UIWidget.h"
@@ -197,15 +198,20 @@ public:
      */
     ccWebViewCallback getOnJSCallback()const;
 
+    /**
+     * Set whether the webview bounces at end of scroll of WebView.
+     */
+    void setBounces(bool bounce);
+
     virtual void draw(cocos2d::Renderer *renderer, cocos2d::Mat4 const &transform, uint32_t flags) override;
 
     /**
      * Toggle visibility of WebView.
      */
     virtual void setVisible(bool visible) override;
-    
     virtual void onEnter() override;
     virtual void onExit() override;
+    virtual void cleanup() override;
 
 protected:
     virtual cocos2d::ui::Widget* createCloneInstance() override;
@@ -243,4 +249,3 @@ private:
 // end group
 /// @}
 #endif //__COCOS2D_UI_WEBVIEW_H
-

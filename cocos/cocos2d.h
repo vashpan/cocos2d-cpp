@@ -29,8 +29,8 @@ THE SOFTWARE.
 #define __COCOS2D_H__
 
 // 0x00 HI ME LO
-// 00   03 09 01
-#define COCOS2D_VERSION 0x00030901
+// 00   03 08 00
+#define COCOS2D_VERSION 0x00031300
 
 //
 // all cocos2d include files
@@ -49,7 +49,6 @@ THE SOFTWARE.
 #include "base/CCMap.h"
 #include "base/CCNS.h"
 #include "base/CCProfiling.h"
-#include "base/CCProperties.h"
 #include "base/CCRef.h"
 #include "base/CCRefPtr.h"
 #include "base/CCScheduler.h"
@@ -63,7 +62,6 @@ THE SOFTWARE.
 #include "base/ccTypes.h"
 #include "base/ccUTF8.h"
 #include "base/ccUtils.h"
-#include "base/CCString.h"
 
 // EventDispatcher
 #include "base/CCEventAcceleration.h"
@@ -117,7 +115,6 @@ THE SOFTWARE.
 #include "2d/CCFontFNT.h"
 #include "2d/CCLabel.h"
 #include "2d/CCLabelTTF.h"
-#include "2d/CCLabelAtlas.h"
 #include "2d/CCLayer.h"
 #include "2d/CCMenu.h"
 #include "2d/CCMenuItem.h"
@@ -154,12 +151,10 @@ THE SOFTWARE.
 #include "renderer/CCQuadCommand.h"
 #include "renderer/CCRenderCommand.h"
 #include "renderer/CCRenderCommandPool.h"
-#include "renderer/CCRenderState.h"
 #include "renderer/CCRenderer.h"
 #include "renderer/CCTexture2D.h"
 #include "renderer/CCTextureCache.h"
 #include "renderer/CCTrianglesCommand.h"
-#include "renderer/CCVertexAttribBinding.h"
 #include "renderer/CCVertexIndexBuffer.h"
 #include "renderer/CCVertexIndexData.h"
 #include "renderer/ccGLStateCache.h"
@@ -223,7 +218,9 @@ THE SOFTWARE.
 
 // tilemap_parallax_nodes
 #include "2d/CCParallaxNode.h"
+#include "2d/CCTMXLayer.h"
 #include "2d/CCTMXObjectGroup.h"
+#include "2d/CCTMXTiledMap.h"
 #include "2d/CCTMXXMLParser.h"
 #include "2d/CCTileMapAtlas.h"
 #include "2d/CCFastTMXLayer.h"

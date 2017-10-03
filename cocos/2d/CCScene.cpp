@@ -27,8 +27,8 @@ THE SOFTWARE.
 
 #include "2d/CCScene.h"
 #include "base/CCDirector.h"
+#include "base/ccUTF8.h"
 #include "renderer/CCRenderer.h"
-#include "base/CCString.h"
 
 NS_CC_BEGIN
 
@@ -44,7 +44,7 @@ Scene::~Scene()
 
 bool Scene::init()
 {
-    auto size = _director->getWinSize();
+    auto size = Director::getInstance()->getWinSize();
     return initWithSize(size);
 }
 
@@ -89,10 +89,29 @@ std::string Scene::getDescription() const
     return StringUtils::format("<Scene | tag = %d>", _tag);
 }
 
+
+void Scene::render(Renderer* renderer, const Mat4& eyeTransform, const Mat4* eyeProjection)
+{
+    auto director = Director::getInstance();
+    const auto& transform = getNodeToParentTransform();
+    
+    director->pushMatrix(MATRIX_STACK_TYPE::MATRIX_STACK_PROJECTION);
+    
+    //visit the scene
+    visit(renderer, transform, 0);
+    
+    renderer->render();
+    
+    director->popMatrix(MATRIX_STACK_TYPE::MATRIX_STACK_PROJECTION);
+    
+    // we shouldn't restore the transform matrix since it could be used
+    // from "update" or other parts of the game to calculate culling or something else.
+    //        camera->setNodeToParentTransform(eyeCopy);
+}
+
 void Scene::removeAllChildren()
 {
     Node::removeAllChildren();
-
 }
 
 NS_CC_END

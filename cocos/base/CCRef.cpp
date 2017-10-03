@@ -42,13 +42,6 @@ static void untrackRef(Ref* ref);
 Ref::Ref()
 : _referenceCount(1) // when the Ref is created, the reference count of it is 1
 {
-#if CC_ENABLE_SCRIPT_BINDING
-    static unsigned int uObjectCount = 0;
-    _luaID = 0;
-    _ID = ++uObjectCount;
-    _scriptObject = nullptr;
-#endif
-
 #if CC_REF_LEAK_DETECTION
     trackRef(this);
 #endif
@@ -56,25 +49,6 @@ Ref::Ref()
 
 Ref::~Ref()
 {
-#if CC_ENABLE_SCRIPT_BINDING
-    if (ScriptEngineManager::ShareInstance) {
-        // if the object is referenced by Lua engine, remove it
-        if (_luaID)
-        {
-            ScriptEngineManager::ShareInstance->getScriptEngine()->removeScriptObjectByObject(this);
-        }
-        else
-        {
-            auto scriptEngine = ScriptEngineManager::ShareInstance->getScriptEngine();
-            if (scriptEngine != nullptr && scriptEngine->getScriptType() == kScriptTypeJavascript)
-            {
-                scriptEngine->removeScriptObjectByObject(this);
-            }
-        }
-    }
-#endif
-
-
 #if CC_REF_LEAK_DETECTION
     if (_referenceCount != 0)
         untrackRef(this);
@@ -149,20 +123,20 @@ unsigned int Ref::getReferenceCount() const
 
 #if CC_REF_LEAK_DETECTION
 
-static std::list<Ref*>* __refAllocationList = nullptr;
+static std::list<Ref*> __refAllocationList;
 
 void Ref::printLeaks()
 {
     // Dump Ref object memory leaks
-    if (__refAllocationList->empty())
+    if (__refAllocationList.empty())
     {
         log("[memory] All Ref objects successfully cleaned up (no leaks detected).\n");
     }
     else
     {
-        log("[memory] WARNING: %d Ref objects still active in memory.\n", (int)__refAllocationList->size());
+        log("[memory] WARNING: %d Ref objects still active in memory.\n", (int)__refAllocationList.size());
 
-        for (const auto& ref : *__refAllocationList)
+        for (const auto& ref : __refAllocationList)
         {
             CC_ASSERT(ref);
             const char* type = typeid(*ref).name();
@@ -175,27 +149,23 @@ static void trackRef(Ref* ref)
 {
     CCASSERT(ref, "Invalid parameter, ref should not be null!");
 
-    if (__refAllocationList == nullptr) {
-        __refAllocationList = new (std::nothrow) std::list<Ref*>();
-    }
     // Create memory allocation record.
-    __refAllocationList->push_back(ref);
+    __refAllocationList.push_back(ref);
 }
 
 static void untrackRef(Ref* ref)
 {
-    auto iter = std::find(__refAllocationList->begin(), __refAllocationList->end(), ref);
-    if (iter == __refAllocationList->end())
+    auto iter = std::find(__refAllocationList.begin(), __refAllocationList.end(), ref);
+    if (iter == __refAllocationList.end())
     {
         log("[memory] CORRUPTION: Attempting to free (%s) with invalid ref tracking record.\n", typeid(*ref).name());
         return;
     }
 
-    __refAllocationList->erase(iter);
+    __refAllocationList.erase(iter);
 }
 
 #endif // #if CC_REF_LEAK_DETECTION
 
 
 NS_CC_END
-

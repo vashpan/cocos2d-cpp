@@ -58,16 +58,10 @@ typedef struct _MipmapInfo
 class CC_DLL Image : public Ref
 {
 public:
-    friend class TextureCache;
     /**
      * @js ctor
      */
     Image();
-    /**
-     * @js NA
-     * @lua NA
-     */
-    virtual ~Image();
 
     /** Supported formats for Image */
     enum class Format
@@ -79,7 +73,7 @@ public:
         //! TIFF
         TIFF,
         //! WebP
-//        WEBP,
+        WEBP,
         //! PVR
         PVR,
         //! ETC
@@ -95,6 +89,21 @@ public:
         //! Unknown format
         UNKNOWN
     };
+
+    /**
+     * Enables or disables premultiplied alpha for PNG files.
+     *
+     *  @param enabled (default: true)
+     */
+    static void setPNGPremultipliedAlphaEnabled(bool enabled) { PNG_PREMULTIPLIED_ALPHA_ENABLED = enabled; }
+    
+    /** treats (or not) PVR files as if they have alpha premultiplied.
+     Since it is impossible to know at runtime if the PVR images have the alpha channel premultiplied, it is
+     possible load them as if they have (or not) the alpha channel premultiplied.
+
+     By default it is disabled.
+     */
+    static void setPVRImagesHavePremultipliedAlpha(bool haveAlphaPremultiplied);
 
     /**
     @brief Load the image from the specified path.
@@ -126,6 +135,7 @@ public:
     inline int               getNumberOfMipmaps()    { return _numberOfMipmaps; }
     inline MipmapInfo*       getMipmaps()            { return _mipmaps; }
     inline bool              hasPremultipliedAlpha() { return _hasPremultipliedAlpha; }
+    inline std::string getFilePath() const { return _filePath; }
 
     int                      getBitPerPixel();
     bool                     hasAlpha();
@@ -138,25 +148,11 @@ public:
      */
     bool saveToFile(const std::string &filename, bool isToRGB = true);
 
-    /**
-     * Enables or disables premultiplied alpha for PNG files.
-     *
-     *  @param enabled (default: true)
-     */
-    static void setPNGPremultipliedAlphaEnabled(bool enabled) { PNG_PREMULTIPLIED_ALPHA_ENABLED = enabled; }
-    
-    /** treats (or not) PVR files as if they have alpha premultiplied.
-     Since it is impossible to know at runtime if the PVR images have the alpha channel premultiplied, it is
-     possible load them as if they have (or not) the alpha channel premultiplied.
-
-     By default it is disabled.
-     */
-    static void setPVRImagesHavePremultipliedAlpha(bool haveAlphaPremultiplied);
-
 protected:
     bool initWithJpgData(const unsigned char *  data, ssize_t dataLen);
     bool initWithPngData(const unsigned char * data, ssize_t dataLen);
     bool initWithTiffData(const unsigned char * data, ssize_t dataLen);
+    bool initWithWebpData(const unsigned char * data, ssize_t dataLen);
     bool initWithPVRData(const unsigned char * data, ssize_t dataLen);
     bool initWithPVRv2Data(const unsigned char * data, ssize_t dataLen);
     bool initWithPVRv3Data(const unsigned char * data, ssize_t dataLen);
@@ -176,9 +172,10 @@ protected:
      It's same as define but it respects namespaces
      */
     static const int MIPMAP_MAX = 16;
-    
+    /**
+     @brief Determine whether we premultiply alpha for png files.
+     */
     static bool PNG_PREMULTIPLIED_ALPHA_ENABLED;
-    
     unsigned char *_data;
     ssize_t _dataLen;
     int _width;
@@ -194,22 +191,24 @@ protected:
 
 protected:
     // noncopyable
-    Image(const Image& rImg);
-    Image& operator=(const Image&);
+    Image(const Image&) = delete;
+    Image& operator=(const Image&) = delete;
 
-    /*
-     @brief The same result as with initWithImageFile, but thread safe. It is caused by
-     loadImage() in TextureCache.cpp.
-     @param fullpath  full path of the file.
-     @param imageType the type of image, currently only supporting two types.
-     @return  true if loaded correctly.
+    // nonmoveable
+    Image(Image&&) = delete;
+    Image& operator=(Image&&) = delete;
+
+    /**
+     * @js NA
+     * @lua NA
      */
-    bool initWithImageFileThreadSafe(const std::string& fullpath);
+    virtual ~Image();
 
     Format detectFormat(const unsigned char * data, ssize_t dataLen);
     bool isPng(const unsigned char * data, ssize_t dataLen);
     bool isJpg(const unsigned char * data, ssize_t dataLen);
     bool isTiff(const unsigned char * data, ssize_t dataLen);
+    bool isWebp(const unsigned char * data, ssize_t dataLen);
     bool isPvr(const unsigned char * data, ssize_t dataLen);
     bool isEtc(const unsigned char * data, ssize_t dataLen);
 };
@@ -221,4 +220,3 @@ NS_CC_END
 
 /// @endcond
 #endif    // __CC_IMAGE_H__
-

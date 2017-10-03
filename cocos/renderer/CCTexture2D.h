@@ -179,18 +179,14 @@ public:
      */
     static Texture2D::PixelFormat getDefaultAlphaPixelFormat();
     
-    static void fouceDeleteALLTexture2D();
+    static void forceDeleteALLTexture2D();
 
 public:
     /**
      * @js ctor
      */
     Texture2D();
-    /**
-     * @js NA
-     * @lua NA
-     */
-    virtual ~Texture2D();
+
     /**
      Get texture name, dimensions and coordinates message by a string.
      * @js NA
@@ -276,7 +272,7 @@ public:
      @param hAlignment The font horizontal text alignment type.
      @param vAlignment The font vertical text alignment type.
      */
-    bool initWithString(const std::string& text,  const std::string &fontName, float fontSize, const Size& dimensions = Size(0, 0), TextHAlignment hAlignment = TextHAlignment::CENTER, TextVAlignment vAlignment = TextVAlignment::TOP);
+    bool initWithString(const std::string& text,  const std::string &fontName, float fontSize, const Size& dimensions = Size(0, 0), TextHAlignment hAlignment = TextHAlignment::CENTER, TextVAlignment vAlignment = TextVAlignment::TOP, bool enableWrap = true, int overflow = 0);
 
     /** Initializes a texture from a string using a text definition.
 
@@ -384,12 +380,30 @@ public:
     /** Get a shader program from the texture.*/
     GLProgram* getGLProgram() const;
 
+    std::string getPath()const { return _filePath; }
 
+    void setAlphaTexture(Texture2D* alphaTexture);
+
+    GLuint getAlphaTextureName() const;
 public:
     /** Get pixel info map, the key-value pairs is PixelFormat and PixelFormatInfo.*/
     static const PixelFormatInfoMap& getPixelFormatInfoMap();
 
 private:
+    // noncopyable
+    Texture2D(const Texture2D&) = delete;
+    Texture2D& operator=(const Texture2D&) = delete;
+
+    // nonmoveable
+    Texture2D(Texture2D&&) = delete;
+    Texture2D& operator=(Texture2D&&) = delete;
+
+    /**
+     * @js NA
+     * @lua NA
+     */
+    virtual ~Texture2D();
+
     /**
     * A struct for storing 9-patch image capInsets.
     */
@@ -466,6 +480,7 @@ private:
     //RGB888 to XXX
     static void convertRGB888ToRGBA8888(const unsigned char* data, ssize_t dataLen, unsigned char* outData);
     static void convertRGB888ToRGB565(const unsigned char* data, ssize_t dataLen, unsigned char* outData);
+    static void convertRGB888ToA8(const unsigned char* data, ssize_t dataLen, unsigned char* outData);
     static void convertRGB888ToI8(const unsigned char* data, ssize_t dataLen, unsigned char* outData);
     static void convertRGB888ToAI88(const unsigned char* data, ssize_t dataLen, unsigned char* outData);
     static void convertRGB888ToRGBA4444(const unsigned char* data, ssize_t dataLen, unsigned char* outData);
@@ -518,6 +533,11 @@ protected:
     friend class SpriteFrameCache;
     friend class TextureCache;
     friend class ui::Scale9Sprite;
+
+    bool _valid;
+    std::string _filePath;
+
+    Texture2D* _alphaTexture;
 };
 
 

@@ -1,4 +1,4 @@
-#include "JniHelper.h"
+#include "platform/android/jni/JniHelper.h"
 #include <jni.h>
 #include "base/CCDirector.h"
 #include "base/CCEventDispatcher.h"
@@ -16,8 +16,8 @@ extern "C" {
         a.z = -((double)z / TG3_GRAVITY_EARTH);
         a.timestamp = (double)timeStamp;
 
-        EventAcceleration event(a);
-        Director::getInstance()->getEventDispatcher()->dispatchEvent(&event);
+        EventAcceleration* event = new (std::nothrow) EventAcceleration(a);
+        Director::getInstance()->getEventDispatcher()->dispatchEvent(event);
+        event->release();
     }
 }
-

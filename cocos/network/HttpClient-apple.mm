@@ -1,7 +1,7 @@
 /****************************************************************************
  Copyright (c) 2012      greathqy
  Copyright (c) 2012      cocos2d-x.org
- Copyright (c) 2013-2016 Chukong Technologies Inc.
+ Copyright (c) 2013-2017 Chukong Technologies Inc.
 
  http://www.cocos2d-x.org
 
@@ -27,7 +27,7 @@
 #include "platform/CCPlatformConfig.h"
 #if (CC_TARGET_PLATFORM == CC_PLATFORM_MAC) || (CC_TARGET_PLATFORM == CC_PLATFORM_IOS)
 
-#include "HttpClient.h"
+#include "network/HttpClient.h"
 
 #include <queue>
 #include <errno.h>
@@ -49,8 +49,9 @@ static int processTask(HttpClient* client, HttpRequest *request, NSString *reque
 void HttpClient::networkThread()
 {
     increaseThreadCount();
-
-    while (true) {
+    
+    while (true) @autoreleasepool {
+        
         HttpRequest *request;
 
         // step 1: send http request if the requestQueue isn't empty
@@ -66,32 +67,34 @@ void HttpClient::networkThread()
         if (request == _requestSentinel) {
             break;
         }
-
-        if (Director::DirectorInstance && !Director::isPurgeDirectorInNextLoop())
+        
+        // Create a HttpResponse object, the default setting is http access failed
+        HttpResponse *response = new (std::nothrow) HttpResponse(request);
+        
+        processResponse(response, _responseMessage);
+        
+        // add response packet into queue
+        _responseQueueMutex.lock();
+        _responseQueue.pushBack(response);
+        _responseQueueMutex.unlock();
+        
+        _schedulerMutex.lock();
+        if (nullptr != _scheduler)
         {
-            // Create a HttpResponse object, the default setting is http access failed
-            HttpResponse *response = new (std::nothrow) HttpResponse(request);
-            
-            processResponse(response, _responseMessage);
-            
-            // add response packet into queue
-            _responseQueueMutex.lock();
-            _responseQueue.pushBack(response);
-            _responseQueueMutex.unlock();
-            
-            Director::DirectorInstance->getScheduler()->performFunctionInCocosThread(CC_CALLBACK_0(HttpClient::dispatchResponseCallbacks, this));
+            _scheduler->performFunctionInCocosThread(CC_CALLBACK_0(HttpClient::dispatchResponseCallbacks, this));
         }
+        _schedulerMutex.unlock();
     }
-
+    
     // cleanup: if worker thread received quit signal, clean up un-completed request queue
     _requestQueueMutex.lock();
     _requestQueue.clear();
     _requestQueueMutex.unlock();
-
+    
     _responseQueueMutex.lock();
     _responseQueue.clear();
     _responseQueueMutex.unlock();
-
+    
     decreaseThreadCountAndMayDeleteThis();
 }
 
@@ -99,30 +102,27 @@ void HttpClient::networkThread()
 void HttpClient::networkThreadAlone(HttpRequest* request, HttpResponse* response)
 {
     increaseThreadCount();
-
+    
     char responseMessage[RESPONSE_BUFFER_SIZE] = { 0 };
     processResponse(response, responseMessage);
-
-    if (Director::DirectorInstance && !Director::isPurgeDirectorInNextLoop())
+    
+    _schedulerMutex.lock();
+    if (nullptr != _scheduler)
     {
-        Director::DirectorInstance->getScheduler()->performFunctionInCocosThread([this, response, request]{
-            const ccHttpRequestCallback& callback = request->getCallback();
-            Ref* pTarget = request->getTarget();
-            SEL_HttpResponse pSelector = request->getSelector();
+        _scheduler->performFunctionInCocosThread([this, response, request]{
+            const ccHttpRequestCallback& callback = request->getResponseCallback();
 
             if (callback != nullptr)
             {
                 callback(this, response);
             }
-            else if (pTarget && pSelector)
-            {
-                (pTarget->*pSelector)(this, response);
-            }
+
             response->release();
             // do not release in other thread
             request->release();
         });
     }
+    _schedulerMutex.unlock();
     decreaseThreadCountAndMayDeleteThis();
 }
 
@@ -134,14 +134,14 @@ static int processTask(HttpClient* client, HttpRequest* request, NSString* reque
         strcpy(errorBuffer, "client object is invalid");
         return 0;
     }
-
+    
     //create request with url
     NSString* urlstring = [NSString stringWithUTF8String:request->getUrl()];
     NSURL *url = [NSURL URLWithString:urlstring];
 
     NSMutableURLRequest *nsrequest = [NSMutableURLRequest requestWithURL:url
                                                cachePolicy:NSURLRequestReloadIgnoringLocalAndRemoteCacheData
-                                           timeoutInterval:HttpClient::getInstance()->getTimeoutForConnect()];
+                                           timeoutInterval:request->getTimeout()];
 
     //set request type
     [nsrequest setHTTPMethod:requestType];
@@ -151,12 +151,12 @@ static int processTask(HttpClient* client, HttpRequest* request, NSString* reque
     if(!headers.empty())
     {
         /* append custom headers one by one */
-        for (auto it = headers.begin(); it != headers.end(); ++it)
+        for (auto& header : headers)
         {
-            unsigned long i = it->find(':', 0);
-            unsigned long length = it->size();
-            std::string field = it->substr(0, i);
-            std::string value = it->substr(i+1, length-i);
+            unsigned long i = header.find(':', 0);
+            unsigned long length = header.size();
+            std::string field = header.substr(0, i);
+            std::string value = header.substr(i+1, length-i);
             NSString *headerField = [NSString stringWithUTF8String:field.c_str()];
             NSString *headerValue = [NSString stringWithUTF8String:value.c_str()];
             [nsrequest setValue:headerValue forHTTPHeaderField:headerField];
@@ -165,7 +165,7 @@ static int processTask(HttpClient* client, HttpRequest* request, NSString* reque
 
     //if request type is post or put,set header and data
     if([requestType  isEqual: @"POST"] || [requestType isEqual: @"PUT"])
-    {
+    {   
         char* requestDataBuffer = request->getRequestData();
         if (nullptr !=  requestDataBuffer && 0 != request->getRequestDataSize())
         {
@@ -174,7 +174,7 @@ static int processTask(HttpClient* client, HttpRequest* request, NSString* reque
         }
     }
 
-    //read cookie propertities from file and set cookie
+    //read cookie properties from file and set cookie
     std::string cookieFilename = client->getCookieFilename();
     if(!cookieFilename.empty() && nullptr != client->getCookie())
     {
@@ -191,34 +191,34 @@ static int processTask(HttpClient* client, HttpRequest* request, NSString* reque
             value, NSHTTPCookieValue, path, NSHTTPCookiePath,
             domain, NSHTTPCookieDomain,
             nil];
-
+            
             // create the cookie from the properties
             NSHTTPCookie *cookie = [NSHTTPCookie cookieWithProperties:properties];
-
+            
             // add the cookie to the cookie storage
             [[NSHTTPCookieStorage sharedHTTPCookieStorage] setCookie:cookie];
         }
     }
-
+    
     HttpAsynConnection *httpAsynConn = [[HttpAsynConnection new] autorelease];
     httpAsynConn.srcURL = urlstring;
     httpAsynConn.sslFile = nil;
-
+    
     std::string sslCaFileName = client->getSSLVerification();
     if(!sslCaFileName.empty())
     {
         long len = sslCaFileName.length();
         long pos = sslCaFileName.rfind('.', len-1);
-
+        
         httpAsynConn.sslFile = [NSString stringWithUTF8String:sslCaFileName.substr(0, pos).c_str()];
     }
     [httpAsynConn startRequest:nsrequest];
-
+    
     while( httpAsynConn.finish != true)
     {
         [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantFuture]];
     }
-
+    
     //if http connection return error
     if (httpAsynConn.connError != nil)
     {
@@ -233,9 +233,9 @@ static int processTask(HttpClient* client, HttpRequest* request, NSString* reque
         NSString* errorString = [httpAsynConn.responseError localizedDescription];
         strcpy(errorBuffer, [errorString UTF8String]);
     }
-
+    
     *responseCode = httpAsynConn.responseCode;
-
+    
     //add cookie to cookies vector
     if(!cookieFilename.empty())
     {
@@ -250,7 +250,7 @@ static int processTask(HttpClient* client, HttpRequest* request, NSString* reque
             NSDate *date = cookie.expiresDate;
             NSString *name = cookie.name;
             NSString *value = cookie.value;
-
+            
             CookiesInfo cookieInfo;
             cookieInfo.domain = [domain cStringUsingEncoding: NSUTF8StringEncoding];
             cookieInfo.path = [path cStringUsingEncoding: NSUTF8StringEncoding];
@@ -259,11 +259,11 @@ static int processTask(HttpClient* client, HttpRequest* request, NSString* reque
             cookieInfo.name = [name cStringUsingEncoding: NSUTF8StringEncoding];
             cookieInfo.value = [value cStringUsingEncoding: NSUTF8StringEncoding];
             cookieInfo.tailmatch = true;
-
+            
             client->getCookie()->updateOrAddCookie(&cookieInfo);
         }
     }
-
+    
     //handle response header
     NSMutableString *header = [NSMutableString string];
     [header appendFormat:@"HTTP/1.1 %ld %@\n", (long)httpAsynConn.responseCode, httpAsynConn.statusString];
@@ -277,13 +277,13 @@ static int processTask(HttpClient* client, HttpRequest* request, NSString* reque
         [header deleteCharactersInRange:range];
     }
     NSData *headerData = [header dataUsingEncoding:NSUTF8StringEncoding];
-    auto headerBuffer = (std::vector<char>*)headerStream;
+    std::vector<char> *headerBuffer = (std::vector<char>*)headerStream;
     const void* headerptr = [headerData bytes];
     long headerlen = [headerData length];
     headerBuffer->insert(headerBuffer->end(), (char*)headerptr, (char*)headerptr+headerlen);
 
     //handle response data
-    auto recvBuffer = (std::vector<char>*)stream;
+    std::vector<char> *recvBuffer = (std::vector<char>*)stream;
     const void* ptr = [httpAsynConn.responseData bytes];
     long len = [httpAsynConn.responseData length];
     recvBuffer->insert(recvBuffer->end(), (char*)ptr, (char*)ptr+len);
@@ -314,9 +314,12 @@ void HttpClient::destroyInstance()
 
     auto thiz = _httpClient;
     _httpClient = nullptr;
-
-    Director::DirectorInstance->getScheduler()->unscheduleAllForTarget(thiz);
-
+    
+    thiz->_scheduler->unscheduleAllForTarget(thiz);
+    thiz->_schedulerMutex.lock();
+    thiz->_scheduler = nullptr;
+    thiz->_schedulerMutex.unlock();
+    
     thiz->_requestQueueMutex.lock();
     thiz->_requestQueue.pushBack(thiz->_requestSentinel);
     thiz->_requestQueueMutex.unlock();
@@ -356,15 +359,16 @@ void HttpClient::setSSLVerification(const std::string& caFile)
 }
 
 HttpClient::HttpClient()
-: _timeoutForConnect(30)
+: _isInited(false)
+, _timeoutForConnect(30)
 , _timeoutForRead(60)
-, _isInited(false)
 , _threadCount(0)
-, _requestSentinel(new HttpRequest())
 , _cookie(nullptr)
+, _requestSentinel(new HttpRequest())
 {
     CCLOG("In the constructor of HttpClient!");
     memset(_responseMessage, 0, sizeof(char) * RESPONSE_BUFFER_SIZE);
+    _scheduler = Director::getInstance()->getScheduler();
     increaseThreadCount();
 }
 
@@ -381,7 +385,7 @@ HttpClient::~HttpClient()
 }
 
 //Lazy create semaphore & mutex & thread
-bool HttpClient::lazyInitThreadSemphore()
+bool HttpClient::lazyInitThreadSemaphore()
 {
     if (_isInited)
     {
@@ -400,7 +404,7 @@ bool HttpClient::lazyInitThreadSemphore()
 //Add a get task to queue
 void HttpClient::send(HttpRequest* request)
 {
-    if (false == lazyInitThreadSemphore())
+    if (false == lazyInitThreadSemaphore())
     {
         return;
     }
@@ -452,17 +456,11 @@ void HttpClient::dispatchResponseCallbacks()
     if (response)
     {
         HttpRequest *request = response->getHttpRequest();
-        const ccHttpRequestCallback& callback = request->getCallback();
-        Ref* pTarget = request->getTarget();
-        SEL_HttpResponse pSelector = request->getSelector();
+        const ccHttpRequestCallback& callback = request->getResponseCallback();
 
         if (callback != nullptr)
         {
             callback(this, response);
-        }
-        else if (pTarget && pSelector)
-        {
-            (pTarget->*pSelector)(this, response);
         }
 
         response->release();
@@ -499,7 +497,7 @@ void HttpClient::processResponse(HttpResponse* response, char* responseMessage)
             break;
 
         default:
-            CCASSERT(true, "CCHttpClient: unknown request type, only GET and POSt are supported");
+            CCASSERT(false, "CCHttpClient: unknown request type, only GET,POST,PUT or DELETE is supported");
             break;
     }
 

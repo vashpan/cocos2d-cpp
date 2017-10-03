@@ -1,6 +1,6 @@
 /****************************************************************************
 Copyright (c) 2010-2012 cocos2d-x.org
-Copyright (c) 2013-2016 Chukong Technologies Inc.
+Copyright (c) 2013-2017 Chukong Technologies Inc.
 
 http://www.cocos2d-x.org
 
@@ -28,6 +28,7 @@ import android.content.Context;
 import android.media.AudioManager;
 import android.media.SoundPool;
 import android.util.Log;
+import android.content.res.AssetFileDescriptor;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -51,15 +52,19 @@ public class Cocos2dxSound {
     private SoundPool mSoundPool;
     private float mLeftVolume;
     private float mRightVolume;
+    private boolean mIsAudioFocus = true;
 
     // sound path and stream ids map
     // a file may be played many times at the same time
     // so there is an array map to a file path
     private final HashMap<String, ArrayList<Integer>> mPathStreamIDsMap = new HashMap<String, ArrayList<Integer>>();
+    // A lock for mPathStreamIDsMap operation to keep mPathStreamIDsMap being visited in only one thread at a time.
+    private final Object mLockPathStreamIDsMap = new Object();
 
     private final HashMap<String, Integer> mPathSoundIDMap = new HashMap<String, Integer>();
 
-    private ConcurrentHashMap<Integer, SoundInfoForLoadedCompleted>  mPlayWhenLoadedEffects =
+    // Key: SoundID, Value: SoundInfoForLoadedCompleted
+    private ConcurrentHashMap<Integer, SoundInfoForLoadedCompleted> mPlayWhenLoadedEffects =
             new ConcurrentHashMap<Integer, SoundInfoForLoadedCompleted>();
 
     private static final int MAX_SIMULTANEOUS_STREAMS_DEFAULT = 5;
@@ -69,38 +74,40 @@ public class Cocos2dxSound {
     private static final int SOUND_QUALITY = 5;
 
     private final static int INVALID_SOUND_ID = -1;
+    private final static int INVALID_STREAM_ID = -1;
+
     // ===========================================================
     // Constructors
     // ===========================================================
 
     public Cocos2dxSound(final Context context) {
-        mContext = context;
+        this.mContext = context;
 
-        initData();
+        this.initData();
     }
 
     private void initData() {
         if (Cocos2dxHelper.getDeviceModel().contains("GT-I9100")) {
-            mSoundPool = new SoundPool(Cocos2dxSound.MAX_SIMULTANEOUS_STREAMS_I9100, AudioManager.STREAM_MUSIC, Cocos2dxSound.SOUND_QUALITY);
+            this.mSoundPool = new SoundPool(Cocos2dxSound.MAX_SIMULTANEOUS_STREAMS_I9100, AudioManager.STREAM_MUSIC, Cocos2dxSound.SOUND_QUALITY);
         }
         else {
-            mSoundPool = new SoundPool(Cocos2dxSound.MAX_SIMULTANEOUS_STREAMS_DEFAULT, AudioManager.STREAM_MUSIC, Cocos2dxSound.SOUND_QUALITY);
+            this.mSoundPool = new SoundPool(Cocos2dxSound.MAX_SIMULTANEOUS_STREAMS_DEFAULT, AudioManager.STREAM_MUSIC, Cocos2dxSound.SOUND_QUALITY);
         }
+        
+        this.mSoundPool.setOnLoadCompleteListener(new OnLoadCompletedListener());
 
-        mSoundPool.setOnLoadCompleteListener(new OnLoadCompletedListener());
-
-        mLeftVolume = 0.5f;
-        mRightVolume = 0.5f;
+        this.mLeftVolume = 0.5f;
+        this.mRightVolume = 0.5f;
     }
 
     public int preloadEffect(final String path) {
-        Integer soundID = mPathSoundIDMap.get(path);
+        Integer soundID = this.mPathSoundIDMap.get(path);
 
         if (soundID == null) {
-            soundID = createSoundIDFromAsset(path);
+            soundID = this.createSoundIDFromAsset(path);
             // save value just in case if file is really loaded
             if (soundID != Cocos2dxSound.INVALID_SOUND_ID) {
-                mPathSoundIDMap.put(path, soundID);
+                this.mPathSoundIDMap.put(path, soundID);
             }
         }
 
@@ -108,38 +115,39 @@ public class Cocos2dxSound {
     }
 
     public void unloadEffect(final String path) {
-        // stop effects
-        final ArrayList<Integer> streamIDs = mPathStreamIDsMap.get(path);
-        if (streamIDs != null) {
-            for (final Integer steamID : streamIDs) {
-                mSoundPool.stop(steamID);
+        synchronized (mLockPathStreamIDsMap) {
+            // stop effects
+            final ArrayList<Integer> streamIDs = this.mPathStreamIDsMap.get(path);
+            if (streamIDs != null) {
+                for (final Integer steamID : streamIDs) {
+                    this.mSoundPool.stop(steamID);
+                }
             }
+            this.mPathStreamIDsMap.remove(path);
         }
-        mPathStreamIDsMap.remove(path);
 
         // unload effect
-        final Integer soundID = mPathSoundIDMap.get(path);
-        if(soundID != null){
-            mSoundPool.unload(soundID);
-            mPathSoundIDMap.remove(path);
+        final Integer soundID = this.mPathSoundIDMap.get(path);
+        if (soundID != null) {
+            this.mSoundPool.unload(soundID);
+            this.mPathSoundIDMap.remove(path);
         }
     }
 
     private static final int LOAD_TIME_OUT = 500;
 
-    public int playEffect(final String path, final boolean loop, float pitch, float pan, float gain)
-    {
-        int streamID;
+    public int playEffect(final String path, final boolean loop, float pitch, float pan, float gain){
+        Integer soundID = this.mPathSoundIDMap.get(path);
+        int streamID = Cocos2dxSound.INVALID_STREAM_ID;
 
-        Integer soundID = mPathSoundIDMap.get(path);
         if (soundID != null) {
             // parameters; pan = -1 for left channel, 1 for right channel, 0 for both channels
 
             // play sound
-            streamID = doPlayEffect(path, soundID, loop, pitch, pan, gain);
+            streamID = this.doPlayEffect(path, soundID, loop, pitch, pan, gain);
         } else {
             // the effect is not prepared
-            soundID = preloadEffect(path);
+            soundID = this.preloadEffect(path);
             if (soundID == Cocos2dxSound.INVALID_SOUND_ID) {
                 // can not preload effect
                 return Cocos2dxSound.INVALID_SOUND_ID;
@@ -151,11 +159,11 @@ public class Cocos2dxSound {
             synchronized(info) {
                 try {
                     info.wait(LOAD_TIME_OUT);
-                }
-                catch (Exception e) {
+                } catch (Exception e) {
                     e.printStackTrace();
                 }
             }
+
             streamID = info.effectID;
             mPlayWhenLoadedEffects.remove(soundID);
         }
@@ -164,70 +172,77 @@ public class Cocos2dxSound {
     }
 
     public void stopEffect(final int steamID) {
-        mSoundPool.stop(steamID);
+        this.mSoundPool.stop(steamID);
 
-        // remove record
-        for (final String path : mPathStreamIDsMap.keySet()) {
-            if (mPathStreamIDsMap.get(path).contains(steamID)) {
-                mPathStreamIDsMap.get(path).remove(mPathStreamIDsMap.get(path).indexOf(steamID));
-                break;
+        synchronized (mLockPathStreamIDsMap) {
+            // remove record
+            for (final String pPath : this.mPathStreamIDsMap.keySet()) {
+                if (this.mPathStreamIDsMap.get(pPath).contains(steamID)) {
+                    this.mPathStreamIDsMap.get(pPath).remove(this.mPathStreamIDsMap.get(pPath).indexOf(steamID));
+                    break;
+                }
             }
         }
     }
 
     public void pauseEffect(final int steamID) {
-        mSoundPool.pause(steamID);
+        this.mSoundPool.pause(steamID);
     }
 
     public void resumeEffect(final int steamID) {
-        mSoundPool.resume(steamID);
+        this.mSoundPool.resume(steamID);
     }
 
     public void pauseAllEffects() {
-        if (!mPathStreamIDsMap.isEmpty()) {
-            final Iterator<Entry<String, ArrayList<Integer>>> iter = mPathStreamIDsMap.entrySet().iterator();
-            while (iter.hasNext()) {
-                final Entry<String, ArrayList<Integer>> entry = iter.next();
-                for (final int steamID : entry.getValue()) {
-                    mSoundPool.pause(steamID);
+        synchronized (mLockPathStreamIDsMap) {
+            if (!this.mPathStreamIDsMap.isEmpty()) {
+                final Iterator<Entry<String, ArrayList<Integer>>> iter = this.mPathStreamIDsMap.entrySet().iterator();
+                while (iter.hasNext()) {
+                    final Entry<String, ArrayList<Integer>> entry = iter.next();
+                    for (final int steamID : entry.getValue()) {
+                        this.mSoundPool.pause(steamID);
+                    }
                 }
             }
         }
     }
 
     public void resumeAllEffects() {
-        // can not only invoke SoundPool.autoResume() here, because
-        // it only resumes all effects paused by pauseAllEffects()
-        if (!mPathStreamIDsMap.isEmpty()) {
-            final Iterator<Entry<String, ArrayList<Integer>>> iter = mPathStreamIDsMap.entrySet().iterator();
-            while (iter.hasNext()) {
-                final Entry<String, ArrayList<Integer>> entry = iter.next();
-                for (final int steamID : entry.getValue()) {
-                    mSoundPool.resume(steamID);
+        synchronized (mLockPathStreamIDsMap) {
+            // can not only invoke SoundPool.autoResume() here, because
+            // it only resumes all effects paused by pauseAllEffects()
+            if (!this.mPathStreamIDsMap.isEmpty()) {
+                final Iterator<Entry<String, ArrayList<Integer>>> iter = this.mPathStreamIDsMap.entrySet().iterator();
+                while (iter.hasNext()) {
+                    final Entry<String, ArrayList<Integer>> entry = iter.next();
+                    for (final int steamID : entry.getValue()) {
+                        this.mSoundPool.resume(steamID);
+                    }
                 }
             }
         }
     }
 
-    @SuppressWarnings("unchecked")
     public void stopAllEffects() {
-        // stop effects
-        if (!mPathStreamIDsMap.isEmpty()) {
-            final Iterator<?> iter = mPathStreamIDsMap.entrySet().iterator();
-            while (iter.hasNext()) {
-                final Map.Entry<String, ArrayList<Integer>> entry = (Map.Entry<String, ArrayList<Integer>>) iter.next();
-                for (final int steamID : entry.getValue()) {
-                    mSoundPool.stop(steamID);
+        synchronized (mLockPathStreamIDsMap) {
+            // stop effects
+            if (!this.mPathStreamIDsMap.isEmpty()) {
+                final Iterator<?> iter = this.mPathStreamIDsMap.entrySet().iterator();
+                while (iter.hasNext()) {
+                    final Map.Entry<String, ArrayList<Integer>> entry = (Map.Entry<String, ArrayList<Integer>>) iter.next();
+                    for (final int steamID : entry.getValue()) {
+                        this.mSoundPool.stop(steamID);
+                    }
                 }
             }
-        }
 
-        // remove records
-        mPathStreamIDsMap.clear();
+            // remove records
+            this.mPathStreamIDsMap.clear();
+        }
     }
 
     public float getEffectsVolume() {
-        return (mLeftVolume + mRightVolume) / 2;
+        return (this.mLeftVolume + this.mRightVolume) / 2;
     }
 
     public void setEffectsVolume(float volume) {
@@ -239,40 +254,56 @@ public class Cocos2dxSound {
             volume = 1;
         }
 
-        mLeftVolume = mRightVolume = volume;
+        this.mLeftVolume = this.mRightVolume = volume;
 
-        // change the volume of playing sounds
-        if (!mPathStreamIDsMap.isEmpty()) {
-            final Iterator<Entry<String, ArrayList<Integer>>> iter = mPathStreamIDsMap.entrySet().iterator();
-            while (iter.hasNext()) {
-                final Entry<String, ArrayList<Integer>> entry = iter.next();
-                for (final int steamID : entry.getValue()) {
-                    mSoundPool.setVolume(steamID, mLeftVolume, mRightVolume);
+        if (!mIsAudioFocus)
+            return;
+
+        setEffectsVolumeInternal(mLeftVolume, mRightVolume);
+    }
+
+    private void setEffectsVolumeInternal(float left, float right) {
+        synchronized (mLockPathStreamIDsMap) {
+            // change the volume of playing sounds
+            if (!this.mPathStreamIDsMap.isEmpty()) {
+                final Iterator<Entry<String, ArrayList<Integer>>> iter = this.mPathStreamIDsMap.entrySet().iterator();
+                while (iter.hasNext()) {
+                    final Entry<String, ArrayList<Integer>> entry = iter.next();
+                    for (final int steamID : entry.getValue()) {
+                        this.mSoundPool.setVolume(steamID, left, right);
+                    }
                 }
             }
         }
     }
 
     public void end() {
-        mSoundPool.release();
-        mPathStreamIDsMap.clear();
-        mPathSoundIDMap.clear();
-        mPlayWhenLoadedEffects.clear();
+        this.mSoundPool.release();
+        synchronized (mLockPathStreamIDsMap) {
+            this.mPathStreamIDsMap.clear();
+        }
+        this.mPathSoundIDMap.clear();
+        this.mPlayWhenLoadedEffects.clear();
 
-        mLeftVolume = 0.5f;
-        mRightVolume = 0.5f;
+        this.mLeftVolume = 0.5f;
+        this.mRightVolume = 0.5f;
 
-        initData();
+        this.initData();
     }
 
-    public int createSoundIDFromAsset(final String path) {
-        int soundID;
+    private int createSoundIDFromAsset(final String path) {
+        int soundID = Cocos2dxSound.INVALID_SOUND_ID;
 
         try {
             if (path.startsWith("/")) {
-                soundID = mSoundPool.load(path, 0);
+                soundID = this.mSoundPool.load(path, 0);
             } else {
-                soundID = mSoundPool.load(mContext.getAssets().openFd(path), 0);
+                if (Cocos2dxHelper.getObbFile() != null) {
+                    final AssetFileDescriptor assetFileDescriptor = Cocos2dxHelper.getObbFile().getAssetFileDescriptor(path);
+                    soundID = mSoundPool.load(assetFileDescriptor, 0);
+                } else {
+                    soundID = this.mSoundPool.load(this.mContext.getAssets().openFd(path), 0);
+                }
             }
         } catch (final Exception e) {
             soundID = Cocos2dxSound.INVALID_SOUND_ID;
@@ -287,50 +318,63 @@ public class Cocos2dxSound {
         return soundID;
     }
 
-        private float clamp(float value, float min, float max) {
-            return Math.max(min, (Math.min(value, max)));
-        }
+    private float clamp(float value, float min, float max) {
+        return Math.max(min, (Math.min(value, max)));
+    }
 
-    private int doPlayEffect(final String path, final int soundId, final boolean loop, float pitch, float pan, float gain) {
-        float leftVolume = mLeftVolume * gain * (1.0f - clamp(pan, 0.0f, 1.0f));
-        float rightVolume = mRightVolume * gain * (1.0f - clamp(-pan, 0.0f, 1.0f));
-        float soundRate = clamp(SOUND_RATE * pitch, 0.5f, 2.0f);
+    // Adds 'synchronized' keyword for doPlayeEffect since it's possible to be invoked in GL thread and main thread.
+    // In Cocos2dxSound.playEffect, it's in GL thread.
+    // In onLoadComplete callback, it's in main thread.
+    private synchronized int doPlayEffect(final String path, final int soundId, final boolean loop, float pitch, float pan, float gain) {
+        float leftVolume = this.mLeftVolume * gain * (1.0f - this.clamp(pan, 0.0f, 1.0f));
+        float rightVolume = this.mRightVolume * gain * (1.0f - this.clamp(-pan, 0.0f, 1.0f));
+        float soundRate = this.clamp(SOUND_RATE * pitch, 0.5f, 2.0f);
 
         // play sound
-        int streamID = mSoundPool.play(soundId, clamp(leftVolume, 0.0f, 1.0f), clamp(rightVolume, 0.0f, 1.0f), Cocos2dxSound.SOUND_PRIORITY, loop ? -1 : 0, soundRate);
+        int streamID = this.mSoundPool.play(soundId, this.clamp(leftVolume, 0.0f, 1.0f), this.clamp(rightVolume, 0.0f, 1.0f), Cocos2dxSound.SOUND_PRIORITY, loop ? -1 : 0, soundRate);
 
-        // record stream id
-        ArrayList<Integer> streamIDs = mPathStreamIDsMap.get(path);
-        if (streamIDs == null) {
-            streamIDs = new ArrayList<Integer>();
-            mPathStreamIDsMap.put(path, streamIDs);
+        synchronized (mLockPathStreamIDsMap) {
+            // record stream id
+            ArrayList<Integer> streamIDs = this.mPathStreamIDsMap.get(path);
+            if (streamIDs == null) {
+                streamIDs = new ArrayList<Integer>();
+                this.mPathStreamIDsMap.put(path, streamIDs);
+            }
+            streamIDs.add(streamID);
         }
-        streamIDs.add(streamID);
 
         return streamID;
     }
 
     public void onEnterBackground(){
-        mSoundPool.autoPause();
+        this.mSoundPool.autoPause();
     }
 
     public void onEnterForeground(){
-        mSoundPool.autoResume();
+        this.mSoundPool.autoResume();
+    }
+
+    void setAudioFocus(boolean isFocus) {
+        mIsAudioFocus = isFocus;
+        float leftVolume = mIsAudioFocus ? mLeftVolume : 0.0f;
+        float rightVolume = mIsAudioFocus ? mRightVolume : 0.0f;
+
+        setEffectsVolumeInternal(leftVolume, rightVolume);
     }
 
     // ===========================================================
     // Inner and Anonymous Classes
     // ===========================================================
 
-    public class SoundInfoForLoadedCompleted {
-        public boolean isLoop;
-        public float pitch;
-        public float pan;
-        public float gain;
-        public String path;
-        public int effectID;
+    private class SoundInfoForLoadedCompleted {
+        boolean isLoop;
+        float pitch;
+        float pan;
+        float gain;
+        String path;
+        int effectID;
 
-        public SoundInfoForLoadedCompleted(String path, boolean isLoop, float pitch, float pan, float gain) {
+        SoundInfoForLoadedCompleted(String path, boolean isLoop, float pitch, float pan, float gain) {
             this.path = path;
             this.isLoop = isLoop;
             this.pitch = pitch;
@@ -344,9 +388,11 @@ public class Cocos2dxSound {
 
         @Override
         public void onLoadComplete(SoundPool soundPool, int sampleId, int status) {
+            // This callback is in main thread.
             if (status == 0)
             {
                 SoundInfoForLoadedCompleted info =  mPlayWhenLoadedEffects.get(sampleId);
+
                 if (info != null) {
                     info.effectID = doPlayEffect(info.path, sampleId, info.isLoop, info.pitch, info.pan, info.gain);
                     synchronized (info) {
@@ -357,4 +403,3 @@ public class Cocos2dxSound {
         }
     }
 }
-

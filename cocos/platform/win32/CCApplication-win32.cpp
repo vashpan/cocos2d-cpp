@@ -31,6 +31,7 @@ THE SOFTWARE.
 #include <algorithm>
 #include "platform/CCFileUtils.h"
 #include <shellapi.h>
+#include <WinVer.h>
 /**
 @brief    This function change the PVRFrame show/hide setting in register.
 @param  bEnable If true show the PVRFrame window, otherwise hide.
@@ -40,7 +41,7 @@ static void PVRFrameEnableControlWindow(bool bEnable);
 NS_CC_BEGIN
 
 // sharedApplication pointer
-Application * Application::sm_pSharedApplication = 0;
+Application * Application::sm_pSharedApplication = nullptr;
 
 Application::Application()
 : _instance(nullptr)
@@ -62,6 +63,18 @@ int Application::run()
 {
     PVRFrameEnableControlWindow(false);
 
+    ///////////////////////////////////////////////////////////////////////////
+    /////////////// changing timer resolution
+    ///////////////////////////////////////////////////////////////////////////
+    UINT TARGET_RESOLUTION = 1; // 1 millisecond target resolution
+    TIMECAPS tc;
+    UINT wTimerRes = 0;
+    if (TIMERR_NOERROR == timeGetDevCaps(&tc, sizeof(TIMECAPS)))
+    {
+        wTimerRes = std::min(std::max(tc.wPeriodMin, TARGET_RESOLUTION), tc.wPeriodMax);
+        timeBeginPeriod(wTimerRes);
+    }
+
     // Main message loop:
     LARGE_INTEGER nLast;
     LARGE_INTEGER nNow;
@@ -82,19 +95,32 @@ int Application::run()
     // Retain glview to avoid glview being released in the while loop
     glview->retain();
 
-    while(!glview->windowShouldClose())
+    LONGLONG interval = 0LL;
+    LONG waitMS = 0L;
+
+    LARGE_INTEGER freq;
+    QueryPerformanceFrequency(&freq);
+
+    while (!glview->windowShouldClose())
     {
         QueryPerformanceCounter(&nNow);
-        if (nNow.QuadPart - nLast.QuadPart > _animationInterval.QuadPart)
+        interval = nNow.QuadPart - nLast.QuadPart;
+        if (interval >= _animationInterval.QuadPart)
         {
-            nLast.QuadPart = nNow.QuadPart - (nNow.QuadPart % _animationInterval.QuadPart);
-
+            nLast.QuadPart = nNow.QuadPart;
             director->mainLoop();
             glview->pollEvents();
         }
         else
         {
-            Sleep(1);
+            // The precision of timer on Windows is set to highest (1ms) by 'timeBeginPeriod' from above code,
+            // but it's still not precise enough. For example, if the precision of timer is 1ms,
+            // Sleep(3) may make a sleep of 2ms or 4ms. Therefore, we subtract 1ms here to make Sleep time shorter.
+            // If 'waitMS' is equal or less than 1ms, don't sleep and run into next loop to
+            // boost CPU to next frame accurately.
+            waitMS = (_animationInterval.QuadPart - interval) * 1000LL / freq.QuadPart - 1L;
+            if (waitMS > 1L)
+                Sleep(waitMS);
         }
     }
 
@@ -106,6 +132,14 @@ int Application::run()
         director = nullptr;
     }
     glview->release();
+
+    ///////////////////////////////////////////////////////////////////////////
+    /////////////// restoring timer resolution
+    ///////////////////////////////////////////////////////////////////////////
+    if (wTimerRes != 0)
+    {
+        timeEndPeriod(wTimerRes);
+    }
     return 0;
 }
 
@@ -220,6 +254,47 @@ Application::Platform Application::getTargetPlatform()
     return Platform::OS_WINDOWS;
 }
 
+std::string Application::getVersion()
+{
+    char verString[256] = { 0 };
+    TCHAR szVersionFile[MAX_PATH];
+    GetModuleFileName(NULL, szVersionFile, MAX_PATH);
+    DWORD  verHandle = NULL;
+    UINT   size = 0;
+    LPBYTE lpBuffer = NULL;
+    DWORD  verSize = GetFileVersionInfoSize(szVersionFile, &verHandle);
+    
+    if (verSize != NULL)
+    {
+        LPSTR verData = new char[verSize];
+        
+        if (GetFileVersionInfo(szVersionFile, verHandle, verSize, verData))
+        {
+            if (VerQueryValue(verData, L"\\", (VOID FAR* FAR*)&lpBuffer, &size))
+            {
+                if (size)
+                {
+                    VS_FIXEDFILEINFO *verInfo = (VS_FIXEDFILEINFO *)lpBuffer;
+                    if (verInfo->dwSignature == 0xfeef04bd)
+                    {
+                        
+                        // Doesn't matter if you are on 32 bit or 64 bit,
+                        // DWORD is always 32 bits, so first two revision numbers
+                        // come from dwFileVersionMS, last two come from dwFileVersionLS
+                        sprintf(verString, "%d.%d.%d.%d", (verInfo->dwFileVersionMS >> 16) & 0xffff,
+                                (verInfo->dwFileVersionMS >> 0) & 0xffff,
+                                (verInfo->dwFileVersionLS >> 16) & 0xffff,
+                                (verInfo->dwFileVersionLS >> 0) & 0xffff
+                                );
+                    }
+                }
+            }
+        }
+        delete[] verData;
+    }
+    return verString;
+}
+
 bool Application::openURL(const std::string &url)
 {
     WCHAR *temp = new WCHAR[url.size() + 1];
@@ -275,4 +350,3 @@ static void PVRFrameEnableControlWindow(bool bEnable)
 }
 
 #endif // CC_TARGET_PLATFORM == CC_PLATFORM_WIN32
-

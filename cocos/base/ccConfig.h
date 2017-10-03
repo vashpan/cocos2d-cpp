@@ -77,10 +77,9 @@ THE SOFTWARE.
  * The "correct" way to prevent artifacts is by using the spritesheet-artifact-fixer.py or a similar tool.
 
  * Affected nodes:
- * - Sprite / SpriteBatchNode and subclasses: LabelBMFont, TMXTiledMap.
+ * - Sprite / SpriteBatchNode and subclasses: LabelBMFont.
  * - LabelAtlas.
  * - QuadParticleSystem.
- * - TileMap.
 
  * To enabled set it to 1. Disabled by default.
 
@@ -88,6 +87,27 @@ THE SOFTWARE.
  */
 #ifndef CC_FIX_ARTIFACTS_BY_STRECHING_TEXEL
 #define CC_FIX_ARTIFACTS_BY_STRECHING_TEXEL 0
+#endif
+
+/** @def CC_FIX_ARTIFACTS_BY_STRECHING_TEXEL_TMX
+ * If enabled, the texture coordinates will be calculated by using this formula:
+ * - texCoord.left = (rect.origin.x*2+1) / (texture.wide*2);
+ * - texCoord.right = texCoord.left + (rect.size.width*2-2)/(texture.wide*2);
+
+ * The same for bottom and top.
+
+ * This formula prevents artifacts by using 99% of the texture.
+ * The "correct" way to prevent artifacts is by using the spritesheet-artifact-fixer.py or a similar tool.
+
+ * Affected nodes:
+ * - TMXLayer
+
+ * To enabled set it to 1. Enabled by default.
+
+ * @since Cocos Creator v1.7
+ */
+#ifndef CC_FIX_ARTIFACTS_BY_STRECHING_TEXEL_TMX
+#define CC_FIX_ARTIFACTS_BY_STRECHING_TEXEL_TMX 1
 #endif
 
 /** @def CC_DIRECTOR_STATS_INTERVAL
@@ -283,6 +303,14 @@ THE SOFTWARE.
 
 /** Support webp or not. If your application don't use webp format picture, you can undefine this macro to save package size.
  */
+#ifndef CC_USE_WEBP
+#if (CC_TARGET_PLATFORM != CC_PLATFORM_WINRT)
+#define CC_USE_WEBP  1
+#endif
+#endif // CC_USE_WEBP
+
+/** Support webp or not. If your application don't use webp format picture, you can undefine this macro to save package size.
+ */
 //#ifndef CC_USE_WEBP
 //#if (CC_TARGET_PLATFORM != CC_PLATFORM_WINRT)
 //#define CC_USE_WEBP  1
@@ -305,18 +333,42 @@ THE SOFTWARE.
 #define CC_ENABLE_SCRIPT_BINDING 1
 #endif
 
+/** When CC_ENABLE_SCRIPT_BINDING and CC_ENABLE_GC_FOR_NATIVE_OBJECTS are both 1
+ then the Garbage collector will release the native objects, only when the JS/Lua objets
+ are collected.
+ The benefit is that users don't need to retain/release the JS/Lua objects manually.
+
+ By default this behavior is disabled by default
+ */
+#ifdef CC_ENABLE_SCRIPT_BINDING
+  #ifndef CC_ENABLE_GC_FOR_NATIVE_OBJECTS
+  #define CC_ENABLE_GC_FOR_NATIVE_OBJECTS 1
+  #endif
+#endif
+
 /** @def CC_CONSTRUCTOR_ACCESS
  * Indicate the init functions access modifier. If value equals to protected, then these functions are protected.
  * If value equals to public, these functions are public,
  * protected by default.
  */
 #ifndef CC_CONSTRUCTOR_ACCESS
-#ifdef CC_ENABLE_SCRIPT_BINDING
-#define CC_CONSTRUCTOR_ACCESS public
-#else
-#define CC_CONSTRUCTOR_ACCESS protected
+  #ifdef CC_ENABLE_SCRIPT_BINDING
+    #define CC_CONSTRUCTOR_ACCESS public
+  #else
+    #define CC_CONSTRUCTOR_ACCESS protected
+  #endif
 #endif
+
+#ifndef CC_FILEUTILS_APPLE_ENABLE_OBJC
+#define CC_FILEUTILS_APPLE_ENABLE_OBJC  1
+#endif
+
+/** @def CC_ENABLE_PREMULTIPLIED_ALPHA
+ * If enabled, all textures will be preprocessed to multiply its rgb components
+ * by its alpha component.
+ */
+#ifndef CC_ENABLE_PREMULTIPLIED_ALPHA
+# define CC_ENABLE_PREMULTIPLIED_ALPHA 1
 #endif
 
 #endif // __CCCONFIG_H__
-

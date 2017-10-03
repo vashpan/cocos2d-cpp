@@ -176,7 +176,6 @@ class CC_DLL VertexAttribValue
 {
     friend class GLProgram;
     friend class GLProgramState;
-    friend class VertexAttribBinding;
 
 public:
     /**
@@ -477,4 +476,3 @@ NS_CC_END
  @}
  */
 #endif /* __CCGLPROGRAMSTATE_H__ */
-

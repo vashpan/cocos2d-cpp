@@ -27,16 +27,22 @@ THE SOFTWARE.
 
 #include "base/CCTouch.h"
 #include "base/CCDirector.h"
+#include "renderer/CCTextureCache.h"
 #include "base/CCEventDispatcher.h"
 
 NS_CC_BEGIN
 
 namespace {
 
+    EventTouch* __touchBeganEvent = nullptr;
+    EventTouch* __touchMovedEvent = nullptr;
+    EventTouch* __touchEndedEvent = nullptr;
+    EventTouch* __touchCancelledEvent = nullptr;
+
     static Touch* g_touches[EventTouch::MAX_TOUCHES] = { nullptr };
     static unsigned int g_indexBitsUsed = 0;
     // System touch pointer ID (It may not be ascending order number) <-> Ascending order number from 0
-    static std::map<intptr_t, int> g_touchIdReorderMap;
+    static std::unordered_map<intptr_t, int> g_touchIdReorderMap;
 
     static int getUnUsedIndex()
     {
@@ -101,13 +107,21 @@ GLContextAttrs GLView::getGLContextAttrs()
 GLView::GLView()
 : _scaleX(1.0f)
 , _scaleY(1.0f)
+, _antiAliasEnabled(true)
 , _resolutionPolicy(ResolutionPolicy::UNKNOWN)
 {
+    __touchBeganEvent = new (std::nothrow) EventTouch();
+    __touchMovedEvent = new (std::nothrow) EventTouch();
+    __touchEndedEvent = new (std::nothrow) EventTouch();
+    __touchCancelledEvent = new (std::nothrow) EventTouch();
 }
 
 GLView::~GLView()
 {
-
+    CC_SAFE_RELEASE_NULL(__touchBeganEvent);
+    CC_SAFE_RELEASE_NULL(__touchMovedEvent);
+    CC_SAFE_RELEASE_NULL(__touchEndedEvent);
+    CC_SAFE_RELEASE_NULL(__touchCancelledEvent);
 }
 
 void GLView::pollEvents()
@@ -149,10 +163,10 @@ void GLView::updateDesignResolutionSize()
         _viewPortRect.setRect((_screenSize.width - viewPortW) / 2, (_screenSize.height - viewPortH) / 2, viewPortW, viewPortH);
 
         // reset director's member variables to fit visible rect
-        auto director = Director::DirectorInstance;
+        auto director = Director::getInstance();
         director->_winSizeInPoints = getDesignResolutionSize();
         director->_isStatusLabelUpdated = true;
-        director->setGLDefaultValues();
+        director->setProjection(director->getProjection());
     }
 }
 
@@ -183,7 +197,7 @@ const Size& GLView::getFrameSize() const
 
 void GLView::setFrameSize(float width, float height)
 {
-    _designResolutionSize = _screenSize = Size(width, height);
+    _screenSize = Size(width, height);
 }
 
 Rect GLView::getVisibleRect() const
@@ -267,7 +281,8 @@ void GLView::handleTouchesBegin(int num, intptr_t ids[], float xs[], float ys[])
     float x = 0.0f;
     float y = 0.0f;
     int unusedIndex = 0;
-    EventTouch touchEvent;
+    EventTouch* touchEvent = __touchBeganEvent;
+    touchEvent->reset();
 
     for (int i = 0; i < num; ++i)
     {
@@ -295,19 +310,19 @@ void GLView::handleTouchesBegin(int num, intptr_t ids[], float xs[], float ys[])
             CCLOGINFO("x = %f y = %f", touch->getLocationInView().x, touch->getLocationInView().y);
 
             g_touchIdReorderMap.insert(std::make_pair(id, unusedIndex));
-            touchEvent._touches.push_back(touch);
+            touchEvent->_touches.push_back(touch);
         }
     }
 
-    if (touchEvent._touches.empty())
+    if (touchEvent->_touches.empty())
     {
         CCLOG("touchesBegan: size = 0");
         return;
     }
 
-    touchEvent._eventCode = EventTouch::EventCode::BEGAN;
-    auto dispatcher = Director::DirectorInstance->getEventDispatcher();
-    dispatcher->dispatchEvent(&touchEvent);
+    touchEvent->_eventCode = EventTouch::EventCode::BEGAN;
+    auto dispatcher = Director::getInstance()->getEventDispatcher();
+    dispatcher->dispatchEvent(touchEvent);
 }
 
 void GLView::handleTouchesMove(int num, intptr_t ids[], float xs[], float ys[])
@@ -320,9 +335,12 @@ void GLView::handleTouchesMove(int num, intptr_t ids[], float xs[], float ys[], 
     intptr_t id = 0;
     float x = 0.0f;
     float y = 0.0f;
+    float tempX = 0.0f;
+    float tempY = 0.0f;
     float force = 0.0f;
     float maxForce = 0.0f;
-    EventTouch touchEvent;
+    EventTouch* touchEvent = __touchMovedEvent;
+    touchEvent->reset();
 
     for (int i = 0; i < num; ++i)
     {
@@ -343,10 +361,17 @@ void GLView::handleTouchesMove(int num, intptr_t ids[], float xs[], float ys[], 
         Touch* touch = g_touches[iter->second];
         if (touch)
         {
-            touch->setTouchInfo(iter->second, (x - _viewPortRect.origin.x) / _scaleX,
-                                (y - _viewPortRect.origin.y) / _scaleY, force, maxForce);
+            tempX = (x - _viewPortRect.origin.x) / _scaleX;
+            tempY = (y - _viewPortRect.origin.y) / _scaleY;
+            if (tempX < 0 || tempX > _designResolutionSize.width ||
+                tempY < 0 || tempY > _designResolutionSize.height)
+            {
+                return;
+            }
 
-            touchEvent._touches.push_back(touch);
+            touch->setTouchInfo(iter->second, tempX, tempY, force, maxForce);
+
+            touchEvent->_touches.push_back(touch);
         }
         else
         {
@@ -356,15 +381,15 @@ void GLView::handleTouchesMove(int num, intptr_t ids[], float xs[], float ys[], 
         }
     }
 
-    if (touchEvent._touches.empty())
+    if (touchEvent->_touches.empty())
     {
         CCLOG("touchesMoved: size = 0");
         return;
     }
 
-    touchEvent._eventCode = EventTouch::EventCode::MOVED;
-    auto dispatcher = Director::DirectorInstance->getEventDispatcher();
-    dispatcher->dispatchEvent(&touchEvent);
+    touchEvent->_eventCode = EventTouch::EventCode::MOVED;
+    auto dispatcher = Director::getInstance()->getEventDispatcher();
+    dispatcher->dispatchEvent(touchEvent);
 }
 
 void GLView::handleTouchesOfEndOrCancel(EventTouch::EventCode eventCode, int num, intptr_t ids[], float xs[], float ys[])
@@ -372,7 +397,8 @@ void GLView::handleTouchesOfEndOrCancel(EventTouch::EventCode eventCode, int num
     intptr_t id = 0;
     float x = 0.0f;
     float y = 0.0f;
-    EventTouch touchEvent;
+    EventTouch* touchEvent = eventCode == EventTouch::EventCode::ENDED ? __touchEndedEvent : __touchCancelledEvent;
+    touchEvent->reset();
 
     for (int i = 0; i < num; ++i)
     {
@@ -391,11 +417,11 @@ void GLView::handleTouchesOfEndOrCancel(EventTouch::EventCode eventCode, int num
         Touch* touch = g_touches[iter->second];
         if (touch)
         {
-            CCLOGINFO("Ending touches with id: %d, x=%f, y=%f", id, x, y);
+            CCLOGINFO("Ending touches with id: %d, x=%f, y=%f", (int)id, x, y);
             touch->setTouchInfo(iter->second, (x - _viewPortRect.origin.x) / _scaleX,
                                 (y - _viewPortRect.origin.y) / _scaleY);
 
-            touchEvent._touches.push_back(touch);
+            touchEvent->_touches.push_back(touch);
 
             g_touches[iter->second] = nullptr;
             removeUsedIndexBit(iter->second);
@@ -410,17 +436,17 @@ void GLView::handleTouchesOfEndOrCancel(EventTouch::EventCode eventCode, int num
 
     }
 
-    if (touchEvent._touches.empty())
+    if (touchEvent->_touches.empty())
     {
         CCLOG("touchesEnded or touchesCancel: size = 0");
         return;
     }
 
-    touchEvent._eventCode = eventCode;
-    auto dispatcher = Director::DirectorInstance->getEventDispatcher();
-    dispatcher->dispatchEvent(&touchEvent);
+    touchEvent->_eventCode = eventCode;
+    auto dispatcher = Director::getInstance()->getEventDispatcher();
+    dispatcher->dispatchEvent(touchEvent);
 
-    for (auto& touch : touchEvent._touches)
+    for (auto& touch : touchEvent->_touches)
     {
         // release the touch object.
         touch->release();
@@ -457,5 +483,38 @@ float GLView::getScaleY() const
     return _scaleY;
 }
 
-NS_CC_END
+void GLView::renderScene(Scene* scene, Renderer* renderer)
+{
+    CCASSERT(scene, "Invalid Scene");
+    CCASSERT(renderer, "Invalid Renderer");
 
+    scene->render(renderer, Mat4::IDENTITY, nullptr);
+}
+
+bool GLView::isAntiAliasEnabled() const
+{
+    return _antiAliasEnabled;
+}
+
+void GLView::enableAntiAlias(bool enabled)
+{
+    if (_antiAliasEnabled == enabled) {
+        return;
+    }
+    _antiAliasEnabled = enabled;
+
+    cocos2d::Vector<Texture2D*> list = Director::getInstance()->getTextureCache()->getAllTextures();
+    for (size_t i = 0; i < list.size(); i++) {
+        Texture2D* tex = list.at(i);
+        if (tex) {
+            if (enabled) {
+                tex->setAntiAliasTexParameters();
+            }
+            else {
+                tex->setAliasTexParameters();
+            }
+        }
+    }
+}
+
+NS_CC_END

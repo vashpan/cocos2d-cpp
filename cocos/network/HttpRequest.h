@@ -1,6 +1,6 @@
 /****************************************************************************
  Copyright (c) 2010-2012 cocos2d-x.org
- Copyright (c) 2013-2016 Chukong Technologies Inc.
+ Copyright (c) 2013-2017 Chukong Technologies Inc.
 
  http://www.cocos2d-x.org
 
@@ -26,10 +26,13 @@
 #ifndef __HTTP_REQUEST_H__
 #define __HTTP_REQUEST_H__
 
-#include <string>
-#include <vector>
+
 #include "base/CCRef.h"
 #include "base/ccMacros.h"
+
+#include <string>
+#include <vector>
+#include <functional>
 
 /**
  * @addtogroup network
@@ -43,9 +46,7 @@ namespace network {
 class HttpClient;
 class HttpResponse;
 
-typedef std::function<void(HttpClient* client, HttpResponse* response)> ccHttpRequestCallback;
-typedef void (cocos2d::Ref::*SEL_HttpResponse)(HttpClient* client, HttpResponse* response);
-#define httpresponse_selector(_SELECTOR) (cocos2d::network::SEL_HttpResponse)(&_SELECTOR)
+typedef std::function<void(HttpClient*/* client*/, HttpResponse*/* response*/)> ccHttpRequestCallback;
 
 /**
  * Defines the object which users must packed for HttpClient::send(HttpRequest*) method.
@@ -78,27 +79,22 @@ public:
 
     /**
      *  Constructor.
-     *   Because HttpRequest object will be used between UI thead and network thread,
+     *   Because HttpRequest object will be used between UI thread and network thread,
          requestObj->autorelease() is forbidden to avoid crashes in AutoreleasePool
          new/retain/release still works, which means you need to release it manually
          Please refer to HttpRequestTest.cpp to find its usage.
      */
     HttpRequest()
     : _requestType(Type::UNKNOWN)
-    , _pTarget(nullptr)
-    , _pSelector(nullptr)
-    , _pCallback(nullptr)
-    , _pUserData(nullptr)
+    , _callback(nullptr)
+    , _userData(nullptr)
+    , _timeoutInSeconds(10.0f)
     {
     }
 
     /** Destructor. */
     virtual ~HttpRequest()
     {
-        if (_pTarget)
-        {
-            _pTarget->release();
-        }
     }
 
     /**
@@ -218,11 +214,11 @@ public:
      * You can attach a customed data in each request, and get it back in response callback.
      * But you need to new/delete the data pointer manully.
      *
-     * @param pUserData the string pointer
+     * @param userData the string pointer
      */
-    inline void setUserData(void* pUserData)
+    inline void setUserData(void* userData)
     {
-        _pUserData = pUserData;
+        _userData = userData;
     }
 
     /**
@@ -233,7 +229,7 @@ public:
      */
     inline void* getUserData() const
     {
-        return _pUserData;
+        return _userData;
     }
 
     /**
@@ -244,63 +240,7 @@ public:
      */
     inline void setResponseCallback(const ccHttpRequestCallback& callback)
     {
-        _pCallback = callback;
-    }
-
-    CC_DEPRECATED_ATTRIBUTE inline void setResponseCallback(Ref* target ,const ccHttpRequestCallback& callback)
-    {
-        if(_pTarget != target)
-        {
-            if (_pTarget) {
-                _pTarget->release();
-            }
-
-            _pTarget = target;
-            if (_pTarget) {
-                _pTarget->retain();
-            }
-        }
-
-        _pCallback = callback;
-    }
-
-    /**
-     * Get the target of callback selector funtion, mainly used by HttpClient.
-     *
-     * @return Ref* the target of callback selector funtion
-     */
-    inline Ref* getTarget() const
-    {
-        return _pTarget;
-    }
-
-    /**
-     * This sub class is just for migration SEL_CallFuncND to SEL_HttpResponse,someday this way will be removed.
-     *
-     * @lua NA
-     */
-    class _prxy
-    {
-    public:
-        /** Constructor. */
-        _prxy( SEL_HttpResponse cb ) :_cb(cb) {}
-        /** Destructor. */
-        ~_prxy(){};
-        /** Destructor. */
-        operator SEL_HttpResponse() const { return _cb; }
-        CC_DEPRECATED_ATTRIBUTE operator SEL_CallFuncND()   const { return (SEL_CallFuncND) _cb; }
-    protected:
-        SEL_HttpResponse _cb;
-    };
-
-    /**
-     * Get _prxy object by the _pSelector.
-     *
-     * @return _prxy the _prxy object
-     */
-    inline _prxy getSelector() const
-    {
-        return _prxy(_pSelector);
+        _callback = callback;
     }
 
     /**
@@ -308,9 +248,9 @@ public:
      *
      * @return const ccHttpRequestCallback& ccHttpRequestCallback callback function.
      */
-    inline const ccHttpRequestCallback& getCallback() const
+    inline const ccHttpRequestCallback& getResponseCallback() const
     {
-        return _pCallback;
+        return _callback;
     }
 
     /**
@@ -319,9 +259,9 @@ public:
      * @param pHeaders the string vector of custom-defined headers.
      */
     inline void setHeaders(const std::vector<std::string>& headers)
-       {
-           _headers = headers;
-       }
+    {
+       _headers = headers;
+    }
 
     /**
      * Get custom headers.
@@ -333,17 +273,26 @@ public:
         return _headers;
     }
 
+    inline void setTimeout(float timeoutInSeconds)
+    {
+        _timeoutInSeconds = timeoutInSeconds;
+    }
+
+    inline float getTimeout() const
+    {
+        return _timeoutInSeconds;
+    }
+
 protected:
     // properties
     Type                        _requestType;    /// kHttpRequestGet, kHttpRequestPost or other enums
     std::string                 _url;            /// target url that this request is sent to
     std::vector<char>           _requestData;    /// used for POST
     std::string                 _tag;            /// user defined tag, to identify different requests in response callback
-    Ref*                        _pTarget;        /// callback target of pSelector function
-    SEL_HttpResponse            _pSelector;      /// callback function, e.g. MyLayer::onHttpResponse(HttpClient *sender, HttpResponse * response)
-    ccHttpRequestCallback       _pCallback;      /// C++11 style callbacks
-    void*                       _pUserData;      /// You can add your customed data here
-    std::vector<std::string>    _headers;              /// custom http headers
+    ccHttpRequestCallback       _callback;      /// C++11 style callbacks
+    void*                       _userData;      /// You can add your customed data here
+    std::vector<std::string>    _headers;       /// custom http headers
+    float _timeoutInSeconds;
 };
 
 }

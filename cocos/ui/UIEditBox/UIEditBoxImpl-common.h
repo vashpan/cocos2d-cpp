@@ -93,6 +93,7 @@ public:
     void editBoxEditingDidBegin();
     void editBoxEditingChanged(const std::string& text);
     void editBoxEditingDidEnd(const std::string& text);
+    void editBoxEditingReturn();
 
     virtual bool isEditing() override = 0;
     virtual void createNativeControl(const Rect& frame) = 0;
@@ -112,11 +113,12 @@ public:
     virtual void nativeCloseKeyboard() = 0;
     virtual void setNativeMaxLength(int maxLength) {};
 
+protected:
+    bool _editingMode;
 
-private:
     void            initInactiveLabels(const Size& size);
     void            setInactiveText(const char* pText);
-    void            placeInactiveLabels();
+    void            placeInactiveLabels(const Size& size);
     virtual void doAnimationWhenKeyboardMove(float duration, float distance)override {};
     Label* _label;
     Label* _labelPlaceHolder;

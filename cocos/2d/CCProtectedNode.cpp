@@ -26,7 +26,7 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-#include "CCProtectedNode.h"
+#include "2d/CCProtectedNode.h"
 
 #include "base/CCDirector.h"
 #include "2d/CCScene.h"
@@ -39,11 +39,15 @@ ProtectedNode::ProtectedNode() : _reorderProtectedChildDirty(false)
 
 ProtectedNode::~ProtectedNode()
 {
-
     CCLOGINFO( "deallocing ProtectedNode: %p - tag: %i", this, _tag );
+
+    for (auto& child : _protectedChildren)
+    {
+        child->setParent(nullptr);
+    }
 }
 
-ProtectedNode * ProtectedNode::create()
+ProtectedNode * ProtectedNode::create(void)
 {
     ProtectedNode * ret = new (std::nothrow) ProtectedNode();
     if (ret && ret->init())
@@ -102,8 +106,9 @@ void ProtectedNode::addProtectedChild(Node *child, int zOrder, int tag)
     child->setTag(tag);
 
     child->setParent(this);
-    child->setOrderOfArrival(s_globalOrderOfArrival++);
 
+    child->updateOrderOfArrival();
+    
     if( _running )
     {
         child->onEnter();
@@ -170,7 +175,14 @@ void ProtectedNode::removeProtectedChild(cocos2d::Node *child, bool cleanup)
 
         // set parent nil at the end
         child->setParent(nullptr);
-
+        
+#if CC_ENABLE_GC_FOR_NATIVE_OBJECTS
+        auto sEngine = ScriptEngineManager::getInstance()->getScriptEngine();
+        if (sEngine)
+        {
+            sEngine->releaseScriptObject(this, child);
+        }
+#endif // CC_ENABLE_GC_FOR_NATIVE_OBJECTS
         _protectedChildren.erase(index);
     }
 }
@@ -198,6 +210,13 @@ void ProtectedNode::removeAllProtectedChildrenWithCleanup(bool cleanup)
         {
             child->cleanup();
         }
+#if CC_ENABLE_GC_FOR_NATIVE_OBJECTS
+        auto sEngine = ScriptEngineManager::getInstance()->getScriptEngine();
+        if (sEngine)
+        {
+            sEngine->releaseScriptObject(this, child);
+        }
+#endif // CC_ENABLE_GC_FOR_NATIVE_OBJECTS
         // set parent nil at the end
         child->setParent(nullptr);
     }
@@ -224,6 +243,13 @@ void ProtectedNode::removeProtectedChildByTag(int tag, bool cleanup)
 // helper used by reorderChild & add
 void ProtectedNode::insertProtectedChild(cocos2d::Node *child, int z)
 {
+#if CC_ENABLE_GC_FOR_NATIVE_OBJECTS
+    auto sEngine = ScriptEngineManager::getInstance()->getScriptEngine();
+    if (sEngine)
+    {
+        sEngine->retainScriptObject(this, child);
+    }
+#endif // CC_ENABLE_GC_FOR_NATIVE_OBJECTS
     _reorderProtectedChildDirty = true;
     _protectedChildren.pushBack(child);
     child->setLocalZOrder(z);
@@ -232,7 +258,7 @@ void ProtectedNode::insertProtectedChild(cocos2d::Node *child, int z)
 void ProtectedNode::sortAllProtectedChildren()
 {
     if( _reorderProtectedChildDirty ) {
-        std::sort( std::begin(_protectedChildren), std::end(_protectedChildren), nodeComparisonLess );
+        sortNodes(_protectedChildren);
         _reorderProtectedChildDirty = false;
     }
 }
@@ -241,7 +267,7 @@ void ProtectedNode::reorderProtectedChild(cocos2d::Node *child, int localZOrder)
 {
     CCASSERT( child != nullptr, "Child must be non-nil");
     _reorderProtectedChildDirty = true;
-    child->setOrderOfArrival(s_globalOrderOfArrival++);
+    child->updateOrderOfArrival();
     child->setLocalZOrder(localZOrder);
 }
 
@@ -258,10 +284,11 @@ void ProtectedNode::visit(Renderer* renderer, const Mat4 &parentTransform, uint3
     // IMPORTANT:
     // To ease the migration to v3.0, we still support the Mat4 stack,
     // but it is deprecated and your code should not rely on it
-    CCASSERT(nullptr != _director, "Director is null when setting matrix stack");
-    _director->pushMatrix(MATRIX_STACK_TYPE::MATRIX_STACK_MODELVIEW);
-    _director->loadMatrix(MATRIX_STACK_TYPE::MATRIX_STACK_MODELVIEW, _modelViewTransform);
-
+    Director* director = Director::getInstance();
+    CCASSERT(nullptr != director, "Director is null when setting matrix stack");
+    director->pushMatrix(MATRIX_STACK_TYPE::MATRIX_STACK_MODELVIEW);
+    director->loadMatrix(MATRIX_STACK_TYPE::MATRIX_STACK_MODELVIEW, _modelViewTransform);
+    
     int i = 0;      // used by _children
     int j = 0;      // used by _protectedChildren
 
@@ -305,7 +332,7 @@ void ProtectedNode::visit(Renderer* renderer, const Mat4 &parentTransform, uint3
     for(auto it=_children.cbegin()+i; it != _children.cend(); ++it)
         (*it)->visit(renderer, _modelViewTransform, flags);
 
-    _director->popMatrix(MATRIX_STACK_TYPE::MATRIX_STACK_MODELVIEW);
+    director->popMatrix(MATRIX_STACK_TYPE::MATRIX_STACK_MODELVIEW);
 }
 
 void ProtectedNode::onEnter()

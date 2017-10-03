@@ -2,9 +2,9 @@ LOCAL_PATH := $(call my-dir)
 
 include $(CLEAR_VARS)
 
-LOCAL_MODULE := cocos2dlua_shared
+LOCAL_MODULE := cocos2djs_shared
 
-LOCAL_MODULE_FILENAME := libcocos2dlua
+LOCAL_MODULE_FILENAME := libcocos2djs
 
 ifeq ($(COCOS_SIMULATOR_BUILD),1)
 LOCAL_ARM_MODE := arm
@@ -13,14 +13,10 @@ endif
 FILE_LIST := hellolua/main.cpp
 FILE_LIST += $(wildcard $(LOCAL_PATH)/../../Classes/*.cpp)
 FILE_LIST += $(wildcard $(LOCAL_PATH)/../../Classes/ide-support/*.cpp)
-FILE_LIST += $(wildcard $(LOCAL_PATH)/../../Classes/ide-support/*.c)
 
 LOCAL_SRC_FILES := $(FILE_LIST:$(LOCAL_PATH)/%=%)
 
 LOCAL_C_INCLUDES := \
-$(LOCAL_PATH)/../../Classes/protobuf-lite \
-$(LOCAL_PATH)/../../Classes/runtime \
-$(LOCAL_PATH)/../../Classes/jsb \
 $(LOCAL_PATH)/../../Classes \
 $(LOCAL_PATH)/../../../../../../external \
 $(LOCAL_PATH)/../../../../../../tools/simulator/libsimulator/lib \
