@@ -498,8 +498,6 @@
 		464AD6E6197EBB1400E502D8 /* pvr.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 464AD6E3197EBB1400E502D8 /* pvr.cpp */; };
 		464AD6E7197EBB1400E502D8 /* pvr.h in Headers */ = {isa = PBXBuildFile; fileRef = 464AD6E4197EBB1400E502D8 /* pvr.h */; };
 		464AD6E8197EBB1400E502D8 /* pvr.h in Headers */ = {isa = PBXBuildFile; fileRef = 464AD6E4197EBB1400E502D8 /* pvr.h */; };
-		4DC57D211F7A58B5005B6546 /* xxtea.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4DC57D1F1F7A58B5005B6546 /* xxtea.cpp */; };
-		4DC57D331F7B840E005B6546 /* xxtea.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4DC57D1F1F7A58B5005B6546 /* xxtea.cpp */; };
 		5027253A190BF1B900AAF4ED /* cocos2d.h in Headers */ = {isa = PBXBuildFile; fileRef = 50272538190BF1B900AAF4ED /* cocos2d.h */; };
 		5027253B190BF1B900AAF4ED /* cocos2d.h in Headers */ = {isa = PBXBuildFile; fileRef = 50272538190BF1B900AAF4ED /* cocos2d.h */; };
 		5027253C190BF1B900AAF4ED /* cocos2d.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 50272539190BF1B900AAF4ED /* cocos2d.cpp */; };
@@ -1086,13 +1084,11 @@
 		ED3057D01BEC7DA80083C3ED /* libjpeg.a in Frameworks */ = {isa = PBXBuildFile; fileRef = ED3057CA1BEC7DA80083C3ED /* libjpeg.a */; };
 		ED3057D11BEC7DA80083C3ED /* libpng.a in Frameworks */ = {isa = PBXBuildFile; fileRef = ED3057CB1BEC7DA80083C3ED /* libpng.a */; };
 		ED3057D21BEC7DA80083C3ED /* libtiff.a in Frameworks */ = {isa = PBXBuildFile; fileRef = ED3057CC1BEC7DA80083C3ED /* libtiff.a */; };
-		ED3057D31BEC7DA80083C3ED /* libwebsockets.a in Frameworks */ = {isa = PBXBuildFile; fileRef = ED3057CD1BEC7DA80083C3ED /* libwebsockets.a */; };
 		ED6822341BECB14500ED75EA /* libfreetype.a in Frameworks */ = {isa = PBXBuildFile; fileRef = ED3057BE1BEC78580083C3ED /* libfreetype.a */; };
 		ED9C6A9418599AD8000A5232 /* CCNodeGrid.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED9C6A9218599AD8000A5232 /* CCNodeGrid.cpp */; };
 		ED9C6A9518599AD8000A5232 /* CCNodeGrid.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED9C6A9218599AD8000A5232 /* CCNodeGrid.cpp */; };
 		ED9C6A9618599AD8000A5232 /* CCNodeGrid.h in Headers */ = {isa = PBXBuildFile; fileRef = ED9C6A9318599AD8000A5232 /* CCNodeGrid.h */; };
 		ED9C6A9718599AD8000A5232 /* CCNodeGrid.h in Headers */ = {isa = PBXBuildFile; fileRef = ED9C6A9318599AD8000A5232 /* CCNodeGrid.h */; };
-		EDE5DFF81C0D6B3F0014147A /* libwebsockets.a in Frameworks */ = {isa = PBXBuildFile; fileRef = EDE5DFF71C0D6B3F0014147A /* libwebsockets.a */; };
 		FAC8F25C1D339EB70061CEDD /* CCTMXLayer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FAC8F2581D339EB70061CEDD /* CCTMXLayer.cpp */; };
 		FAC8F25D1D339EB70061CEDD /* CCTMXLayer.h in Headers */ = {isa = PBXBuildFile; fileRef = FAC8F2591D339EB70061CEDD /* CCTMXLayer.h */; };
 		FAC8F25E1D339EB70061CEDD /* CCTMXTiledMap.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FAC8F25A1D339EB70061CEDD /* CCTMXTiledMap.cpp */; };
@@ -1367,8 +1363,6 @@
 		46A168631807AF4E005B8026 /* CCTableView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CCTableView.h; sourceTree = "<group>"; };
 		46A168641807AF4E005B8026 /* CCTableViewCell.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = CCTableViewCell.cpp; sourceTree = "<group>"; };
 		46A168651807AF4E005B8026 /* CCTableViewCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CCTableViewCell.h; sourceTree = "<group>"; };
-		4DC57D1F1F7A58B5005B6546 /* xxtea.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = xxtea.cpp; sourceTree = "<group>"; };
-		4DC57D201F7A58B5005B6546 /* xxtea.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = xxtea.h; sourceTree = "<group>"; };
 		50272538190BF1B900AAF4ED /* cocos2d.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = cocos2d.h; path = ../cocos/cocos2d.h; sourceTree = "<group>"; };
 		50272539190BF1B900AAF4ED /* cocos2d.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = cocos2d.cpp; path = ../cocos/cocos2d.cpp; sourceTree = "<group>"; };
 		5034C9FB191D591000CE6051 /* ccShader_PositionTextureColorAlphaTest.frag */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.glsl; path = ccShader_PositionTextureColorAlphaTest.frag; sourceTree = "<group>"; };
@@ -1745,7 +1739,6 @@
 				ED3057D01BEC7DA80083C3ED /* libjpeg.a in Frameworks */,
 				ED3057D11BEC7DA80083C3ED /* libpng.a in Frameworks */,
 				ED3057D21BEC7DA80083C3ED /* libtiff.a in Frameworks */,
-				ED3057D31BEC7DA80083C3ED /* libwebsockets.a in Frameworks */,
 				B21770471977ED34009EE11B /* QuartzCore.framework in Frameworks */,
 				B21770451977ED14009EE11B /* Cocoa.framework in Frameworks */,
 				B21770421977ECF8009EE11B /* ApplicationServices.framework in Frameworks */,
@@ -1760,7 +1753,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				A60A9D661C200E5A0070800A /* libchipmunk.a in Frameworks */,
-				EDE5DFF81C0D6B3F0014147A /* libwebsockets.a in Frameworks */,
 				1ACF6A3C1E4AFDC80033C137 /* libcrypto.a in Frameworks */,
 				1ACF6A3D1E4AFDC80033C137 /* libssl.a in Frameworks */,
 				B291B51D1D4A106A00BBB345 /* libtiff.a in Frameworks */,
@@ -2265,7 +2257,6 @@
 		1A57033E180BD0490088DEC7 /* external */ = {
 			isa = PBXGroup;
 			children = (
-				4DC57D1E1F7A58B5005B6546 /* xxtea */,
 				1A28FF1C1F20AFAB007A1D9D /* SocketRocket */,
 				BAEA45511E279D5C00FA219F /* tinydir */,
 				BA68D7951D62F4B600B7A3F9 /* clipper */,
@@ -2416,9 +2407,9 @@
 			children = (
 				BA679B271CEC371100F875FA /* assets-manager */,
 				A60A9D5A1C200DD00070800A /* PhysicsSprite */,
+				46A168331807AF4E005B8026 /* GUI */,
 				46A167D21807AF4D005B8026 /* cocos-ext.h */,
 				46A168321807AF4E005B8026 /* ExtensionMacros.h */,
-				46A168331807AF4E005B8026 /* GUI */,
 			);
 			name = extensions;
 			path = ../extensions;
@@ -2536,16 +2527,6 @@
 			);
 			name = math;
 			path = ../cocos/math;
-			sourceTree = "<group>";
-		};
-		4DC57D1E1F7A58B5005B6546 /* xxtea */ = {
-			isa = PBXGroup;
-			children = (
-				4DC57D1F1F7A58B5005B6546 /* xxtea.cpp */,
-				4DC57D201F7A58B5005B6546 /* xxtea.h */,
-			);
-			name = xxtea;
-			path = ../external/sources/xxtea;
 			sourceTree = "<group>";
 		};
 		500DC89819105D41007B91BF /* renderer */ = {
@@ -3703,7 +3684,6 @@
 				50ED2BDB19BE76D500A0AB90 /* UIVideoPlayer-ios.mm in Sources */,
 				50ABBE651925AB6F00A911A9 /* CCEventListenerCustom.cpp in Sources */,
 				50ABBE391925AB6F00A911A9 /* CCData.cpp in Sources */,
-				4DC57D211F7A58B5005B6546 /* xxtea.cpp in Sources */,
 				1A57010E180BC8EE0088DEC7 /* CCDrawingPrimitives.cpp in Sources */,
 				50ABBED71925AB6F00A911A9 /* ZipUtils.cpp in Sources */,
 				1A570112180BC8EE0088DEC7 /* CCDrawNode.cpp in Sources */,
@@ -4122,7 +4102,6 @@
 				50ABC0001926664800A911A9 /* CCFileUtils-apple.mm in Sources */,
 				50ABBEB81925AB6F00A911A9 /* ccUTF8.cpp in Sources */,
 				50ABBE841925AB6F00A911A9 /* ccFPSImages.c in Sources */,
-				4DC57D331F7B840E005B6546 /* xxtea.cpp in Sources */,
 				50ABBE4A1925AB6F00A911A9 /* CCEventAcceleration.cpp in Sources */,
 				2980F0231BA9A5550059E678 /* CCUIEditBoxIOS.mm in Sources */,
 				50ABBED01925AB6F00A911A9 /* TGAlib.cpp in Sources */,
